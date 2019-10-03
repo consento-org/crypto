@@ -18,9 +18,5 @@
         "src/types/*"
       ]
     }
-  },
-  "include": [
-    "src/**/*",
-    "test/client/notifications.test.ts", "test/server/app.test.ts", "test/createDb.test.ts", "test/crypto.test.ts", "node_modules/sodium-universal/sodium-universal.d.ts"
-  ]
+  }
 }
