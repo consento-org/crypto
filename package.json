@@ -15,6 +15,14 @@
   "keywords": [],
   "author": "Martin Heidegger <martin.heidegger@gmail.com>",
   "license": "MIT",
+  "jest": {
+    "roots": [
+      "<rootDir>/src"
+    ],
+    "transform": {
+      "^.+\\.tsx?$": "ts-jest"
+    }
+  },
   "eslintConfig": {
     "extends": "standard-with-typescript",
     "parserOptions": {
