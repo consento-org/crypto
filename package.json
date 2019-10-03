@@ -15,6 +15,14 @@
   "keywords": [],
   "author": "Martin Heidegger <martin.heidegger@gmail.com>",
   "license": "MIT",
+  "eslintIgnore": [
+    "node_modules/*",
+    "dist/*",
+    "coverage/*",
+    "**/*.d.ts",
+    "/src/public/",
+    "/src/types/"
+  ],
   "dependencies": {
     "@consento/libsodium-wrappers-sumo": "^0.7.7",
     "buffer": "^5.4.3",
