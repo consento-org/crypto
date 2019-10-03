@@ -8,7 +8,7 @@
     "test": "jest",
     "build-ts": "tsc",
     "watch-ts": "tsc -w",
-    "pack": "rm -rf ./dist && npm run build-ts && cp package.json dist && cp Readme.md dist && cp -r src dist && cd dist && find . -type d | grep __tests__ | xargs rm -r && rexreplace '\"\\.\\./src' '\"./src' *.js.map --verbose && rexreplace '\"\\.\\.\\/\\.\\./src' '\"../src' */**/*.js.map --verbose",
+    "pack": "pack-ts",
     "release": "npm run ci && npm run pack && cd dist && npm publish --access=public",
     "lint": "eslint --ext .js,.ts ."
   },
@@ -39,6 +39,7 @@
   ],
   "dependencies": {
     "@consento/libsodium-wrappers-sumo": "^0.7.7",
+    "@leichtgewicht/pack-ts": "^1.0.0",
     "buffer": "^5.4.3",
     "sodium-universal": "^2.0.0"
   },
