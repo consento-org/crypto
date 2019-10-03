@@ -9,7 +9,7 @@
     "build-ts": "tsc",
     "watch-ts": "tsc -w",
     "pack": "rm -rf ./dist && npm run build-ts && cp package.json dist && cp Readme.md dist && cp -r src dist && cd dist && find . -type d | grep __tests__ | xargs rm -r && rexreplace '\"\\.\\./src' '\"./src' *.js.map --verbose && rexreplace '\"\\.\\.\\/\\.\\./src' '\"../src' */**/*.js.map --verbose",
-    "release": "npm run ci && npm run pack && npm publish --access=public",
+    "release": "npm run ci && npm run pack && cd dist && npm publish --access=public",
     "lint": "eslint --ext .js,.ts ."
   },
   "keywords": [],
