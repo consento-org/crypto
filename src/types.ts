@@ -1,6 +1,8 @@
 import { IEncryptedMessage, IDecryption } from './core/types'
 import { IEncodable } from './util/buffer'
 
+export { IEncryptedMessage, IDecryption, IEncodable }
+
 export interface IAnnonymousOptions {
   id?: Uint8Array | string
 }
