@@ -39,11 +39,11 @@
   ],
   "dependencies": {
     "@consento/libsodium-wrappers-sumo": "^0.7.7",
-    "@leichtgewicht/pack-ts": "^1.0.0",
     "buffer": "^5.4.3",
     "sodium-universal": "^2.0.0"
   },
   "devDependencies": {
+    "@leichtgewicht/pack-ts": "^1.0.0",
     "@consento/sync-randombytes": "^1.0.2",
     "@types/jest": "^24.0.18",
     "@types/libsodium-wrappers-sumo": "^0.7.1",
