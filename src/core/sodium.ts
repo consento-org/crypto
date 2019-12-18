@@ -1,4 +1,5 @@
 import _libsodium from '@consento/libsodium-wrappers-sumo'
+import { split } from '../util/split'
 
 import {
   anyToBuffer,
@@ -18,14 +19,6 @@ if (_global.document === null || _global.document === undefined) {
 }
 
 const libsodium = _libsodium.ready.then(() => _libsodium)
-
-function split (buffer: Uint8Array, offset: number): Uint8Array[] {
-  return [
-    buffer.slice(0, offset),
-    buffer.slice(offset)
-  ]
-}
-
 const deriveContext = 'conotify'
 
 /* eslint @typescript-eslint/camelcase: "off" */

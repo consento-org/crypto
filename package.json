@@ -43,8 +43,8 @@
     "sodium-universal": "^2.0.0"
   },
   "devDependencies": {
-    "@leichtgewicht/pack-ts": "^1.0.0",
     "@consento/sync-randombytes": "^1.0.2",
+    "@leichtgewicht/pack-ts": "^1.0.0",
     "@types/jest": "^24.0.18",
     "@types/libsodium-wrappers-sumo": "^0.7.1",
     "@typescript-eslint/eslint-plugin": "^2.3.2",
@@ -55,6 +55,7 @@
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
     "jest": "^24.9.0",
+    "react-native-sodium": "^0.3.5",
     "rexreplace": "^4.1.1",
     "ts-jest": "^24.1.0",
     "ts-node": "^8.4.1",

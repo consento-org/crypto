@@ -9,6 +9,7 @@ import {
 import {
   ICryptoCore, IAnnonymousKeys, IEncryptedMessage, IDecryption, IKeys
 } from './types'
+import { split } from '../util/split'
 
 /* eslint @typescript-eslint/camelcase: "off" */
 const {
@@ -46,14 +47,6 @@ function randomBuffer (size: number): Buffer {
   const buffer = sodium_malloc(size)
   randombytes_buf(buffer)
   return buffer
-}
-
-function split (buffer: Uint8Array, offset: number): Uint8Array[] {
-  const sliced = [
-    buffer.slice(0, offset),
-    buffer.slice(offset)
-  ]
-  return sliced
 }
 
 const deriveContext = Buffer.from('conotify')
