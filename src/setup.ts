@@ -4,6 +4,7 @@ import { bufferToString, bufferCompare, IEncodable, Buffer } from './util/buffer
 import { toPromise } from './util/toPromise'
 import { IEncryptedMessage, ICryptoCore, IDecryption } from './core/types'
 import { extPromise, IExtPromise } from './util/extPromise'
+import { cancelable, ICancelable } from './util/Cancelable'
 import {
   IConsentoCrypto,
   IAnnonymous,
@@ -78,22 +79,24 @@ function create (crypto: ICryptoCore): IConsentoCrypto {
       return this._initMessage
     }
 
-    async confirm (accept: IHandshakeAcceptMessage): Promise<IHandshakeConfirmation> {
-      const { write } = await this._handshake
-      const secretKey = await crypto.computeSecret(write, Buffer.from(accept.token, 'base64'))
-      const bob = Sender.create()
-      const sendKey = await crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64'))
-      if (!(sendKey instanceof Uint8Array)) {
-        throw new Error('invalid-message')
-      }
-      if (!(sendKey instanceof Uint8Array)) {
-        throw new Error('Expected buffer in decrypted message')
-      }
-      return {
-        sender: new Sender({ sendKey }),
-        receiver: bob.newReceiver(),
-        finalMessage: await bob.sendKey()
-      }
+    confirm (accept: IHandshakeAcceptMessage): ICancelable<IHandshakeConfirmation> {
+      return cancelable(function * () {
+        const { write } = (yield this._handshake) as { write: Uint8Array }
+        const secretKey = (yield crypto.computeSecret(write, Buffer.from(accept.token, 'base64'))) as Uint8Array
+        const bob = Sender.create()
+        const sendKey = (yield crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64'))) as IEncodable
+        if (!(sendKey instanceof Uint8Array)) {
+          throw new Error('invalid-message')
+        }
+        if (!(sendKey instanceof Uint8Array)) {
+          throw new Error('Expected buffer in decrypted message')
+        }
+        return {
+          sender: new Sender({ sendKey }),
+          receiver: bob.newReceiver(),
+          finalMessage: (yield bob.sendKey()) as Uint8Array
+        }
+      }, this)
     }
   }
 
@@ -273,8 +276,15 @@ function create (crypto: ICryptoCore): IConsentoCrypto {
       return crypto.sign(await this._signKey, data)
     }
 
-    async decrypt (encrypted: IEncryptedMessage): Promise<IDecryption> {
-      return crypto.decryptMessage(await this.id(), await this._signKey, await this._receiveKey, encrypted)
+    decrypt (encrypted: IEncryptedMessage): ICancelable<IDecryption> {
+      return cancelable(function * () {
+        return crypto.decryptMessage(
+          yield this.id(),
+          yield this._signKey,
+          yield this._receiveKey,
+          encrypted
+        )
+      }, this)
     }
   }
 
@@ -347,8 +357,15 @@ function create (crypto: ICryptoCore): IConsentoCrypto {
       return `Sender[sendKey=${bufferToString(await this._sendKey, 'base64')}]`
     }
 
-    async encrypt (message: IEncodable): Promise<IEncryptedMessage> {
-      return crypto.encryptMessage(await this.id(), await this._signKey, await this._sendKey, message)
+    encrypt (message: IEncodable): ICancelable<IEncryptedMessage> {
+      return cancelable(function * () {
+        return crypto.encryptMessage(
+          yield this.id(),
+          yield this._signKey,
+          yield this._sendKey,
+          message
+        )
+      }, this)
     }
   }
   return {

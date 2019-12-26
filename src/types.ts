@@ -1,5 +1,6 @@
 import { IEncryptedMessage, IDecryption } from './core/types'
 import { IEncodable } from './util/buffer'
+import { ICancelable } from './util/Cancelable'
 
 export { IEncryptedMessage, IDecryption, IEncodable }
 
@@ -24,13 +25,13 @@ export interface IReceiver extends IAnnonymous {
   newAnnonymous(): IAnnonymous
   receiveKey (): Promise<Uint8Array>
   sign (data: Uint8Array): Promise<Uint8Array>
-  decrypt (encrypted: IEncryptedMessage): Promise<IDecryption>
+  decrypt (encrypted: IEncryptedMessage): ICancelable<IDecryption>
 }
 
 export interface ISender extends IReceiver {
   newReceiver(): IReceiver
   sendKey(): Promise<Uint8Array>
-  encrypt (message: IEncodable): Promise<IEncryptedMessage>
+  encrypt (message: IEncodable): ICancelable<IEncryptedMessage>
 }
 
 export interface IReceiverOptions {
@@ -55,7 +56,7 @@ export interface IHandshakeDone {
 export interface IHandshakeInit {
   readonly receiver: IReceiver
   initMessage (): Promise<Uint8Array>
-  confirm (accept: IHandshakeAcceptMessage): Promise<IHandshakeConfirmation>
+  confirm (accept: IHandshakeAcceptMessage): ICancelable<IHandshakeConfirmation>
 }
 
 export interface IHandshakeConfirmation extends IHandshakeDone {
