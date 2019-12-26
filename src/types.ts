@@ -8,29 +8,29 @@ export interface IAnnonymousOptions {
 }
 
 export interface IAnnonymous {
-  id (): PromiseLike<Uint8Array>
-  idBase64 (): PromiseLike<string>
-  idHex (): PromiseLike<string>
-  equals (other: IAnnonymous): PromiseLike<boolean>
-  compare (other: IAnnonymous, _?: boolean): PromiseLike<number>
-  smallJSON(): PromiseLike<any>
-  quickJSON(): PromiseLike<any>
-  toString(): PromiseLike<string>
+  id (): Promise<Uint8Array>
+  idBase64 (): Promise<string>
+  idHex (): Promise<string>
+  equals (other: IAnnonymous): Promise<boolean>
+  compare (other: IAnnonymous, _?: boolean): Promise<number>
+  smallJSON(): Promise<any>
+  quickJSON(): Promise<any>
+  toString(): Promise<string>
   verify (signature: Uint8Array, body: Uint8Array): Promise<boolean>
   verifyMessage (message: IEncryptedMessage): Promise<boolean>
 }
 
 export interface IReceiver extends IAnnonymous {
   newAnnonymous(): IAnnonymous
-  receiveKey (): PromiseLike<Uint8Array>
-  sign (data: Uint8Array): PromiseLike<Uint8Array>
-  decrypt (encrypted: IEncryptedMessage): PromiseLike<IDecryption>
+  receiveKey (): Promise<Uint8Array>
+  sign (data: Uint8Array): Promise<Uint8Array>
+  decrypt (encrypted: IEncryptedMessage): Promise<IDecryption>
 }
 
 export interface ISender extends IReceiver {
   newReceiver(): IReceiver
-  sendKey(): PromiseLike<Uint8Array>
-  encrypt (message: IEncodable): PromiseLike<IEncryptedMessage>
+  sendKey(): Promise<Uint8Array>
+  encrypt (message: IEncodable): Promise<IEncryptedMessage>
 }
 
 export interface IReceiverOptions {
