@@ -4,6 +4,10 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "target": "es2017",
+    "lib": [
+      "ES2017",
+      "DOM"
+    ],
     "noImplicitAny": true,
     "moduleResolution": "node",
     "sourceMap": true,

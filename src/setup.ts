@@ -360,7 +360,7 @@ function create (crypto: ICryptoCore): IConsentoCrypto {
   }
 }
 
-const cache = new WeakMap<ICryptoCore, any>()
+const cache = new WeakMap<ICryptoCore, any>([])
 
 export function setup (crypto: ICryptoCore): IConsentoCrypto {
   if (cache.has(crypto)) {
