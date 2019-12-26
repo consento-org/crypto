@@ -4,7 +4,7 @@
   "description": "Crypto functionality used in Consento",
   "main": "index.js",
   "scripts": {
-    "ci": "npm run lint && npm run test",
+    "ci": "npm run lint && npm run test -- --no-watchman",
     "test": "jest",
     "build-ts": "tsc",
     "watch-ts": "tsc -w",
