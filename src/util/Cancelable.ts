@@ -6,7 +6,7 @@ export interface ICancelable <T = any> extends Promise<T> {
   finally (onfinally?: (() => void | PromiseLike<void>) | undefined | null): ICancelable<T>
 }
 
-export interface ILegacyCancelable <T = any> {
+export interface ISplitCancelable <T = any> {
   cancel (): Promise<void>
   promise: Promise<T>
 }
@@ -315,19 +315,19 @@ class Cancelable <T, TReturn = any, TScope = undefined> extends AbstractCancelab
 }
 
 // eslint-disable-next-line @typescript-eslint/promise-function-async
-export function legacyCancelable <T> (legacy: ILegacyCancelable<T>): ICancelable<T> {
-  return new LegacyCancelable(legacy)
+export function splitCancelable <T> (split: ISplitCancelable<T>): ICancelable<T> {
+  return new SplitCancelable(split)
 }
 
-class LegacyCancelable <T> extends AbstractCancelable<T> implements ICancelable<T> {
-  constructor (legacy: ILegacyCancelable<T>) {
+class SplitCancelable <T> extends AbstractCancelable<T> implements ICancelable<T> {
+  constructor (split: ISplitCancelable<T>) {
     super()
     const reject = this._reject
     this._reject = (error: Error) => {
       // This will only be called by .cancel() - the error will always be a CancelError
       // and it should always be checked for ._done !== TDone.not in .cancel
       this._done = TDone.err // Prevent eventual future rejections
-      legacy.cancel().then(
+      split.cancel().then(
         () => {
           this._done = TDone.not
           reject(error)
@@ -338,6 +338,6 @@ class LegacyCancelable <T> extends AbstractCancelable<T> implements ICancelable<
         }
       )
     }
-    legacy.promise.then(this._resolve, reject)
+    split.promise.then(this._resolve, reject)
   }
 }

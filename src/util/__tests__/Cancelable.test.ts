@@ -1,4 +1,4 @@
-import { cancelable, CancelError, legacyCancelable, ICancelable } from '../Cancelable'
+import { cancelable, CancelError, splitCancelable, ICancelable } from '../Cancelable'
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const noop = (): void => {}
@@ -607,14 +607,14 @@ describe('chaining', () => {
     }
   })
 })
-describe('legacy support', () => {
+describe('split support', () => {
   it('skipping cancel on resolve', async () => {
     const cancel = async (): Promise<void> => {
       await fail('Cancel called')
     }
     // @ts-ignore TS2339
     const p2 = Promise.resolve('hi')
-    const p = legacyCancelable({ cancel, promise: p2 })
+    const p = splitCancelable({ cancel, promise: p2 })
     await p2
     expect(p.cancel()).not.toBe(p)
     expect(p.cancelled).toBe(false)
@@ -625,7 +625,7 @@ describe('legacy support', () => {
     }
     // @ts-ignore TS2339
     const p2 = Promise.reject(new Error('hi'))
-    const p = legacyCancelable({ cancel, promise: p2 })
+    const p = splitCancelable({ cancel, promise: p2 })
     try {
       await p2
     } catch (_) {}
@@ -640,7 +640,7 @@ describe('legacy support', () => {
     }
     // @ts-ignore TS2339
     const p2 = Promise.reject(new Error('hi'))
-    const p = legacyCancelable({ cancel, promise: p2 })
+    const p = splitCancelable({ cancel, promise: p2 })
     const pCancel = p.cancel()
     expect(pCancel).not.toBe(p)
     await pCancel
@@ -655,7 +655,7 @@ describe('legacy support', () => {
     }
     expect(called).toBe(1)
   })
-  it('weird legacy that rejects after resoving', async () => {
+  it('weird split that rejects after resoving', async () => {
     const cancel = async (): Promise<void> => {
       await fail('Cancel called')
     }
@@ -667,7 +667,7 @@ describe('legacy support', () => {
         })
       }
     } as any
-    const p = legacyCancelable({
+    const p = splitCancelable({
       cancel,
       promise
     })
@@ -680,7 +680,7 @@ describe('legacy support', () => {
       // @ts-ignore TS2339
       return Promise.reject(new Error('hello'))
     }
-    const p = legacyCancelable({
+    const p = splitCancelable({
       cancel,
       promise: new Promise(noop)
     })
