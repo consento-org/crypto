@@ -250,7 +250,7 @@ describe('finally', () => {
     const p = cancelable(function * () {
       return 'hello'
     }).finally(async () => {
-      p2 = cancelable<string>(function * () {
+      p2 = cancelable<void>(function * () {
         return new Promise(noop)
       })
       return p2

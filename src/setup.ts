@@ -80,7 +80,7 @@ function create (crypto: ICryptoCore): IConsentoCrypto {
     }
 
     confirm (accept: IHandshakeAcceptMessage): ICancelable<IHandshakeConfirmation> {
-      return cancelable(function * () {
+      return cancelable<IHandshakeConfirmation, HandshakeInit>(function * () {
         const { write } = (yield this._handshake) as { write: Uint8Array }
         const secretKey = (yield crypto.computeSecret(write, Buffer.from(accept.token, 'base64'))) as Uint8Array
         const bob = Sender.create()
@@ -91,7 +91,7 @@ function create (crypto: ICryptoCore): IConsentoCrypto {
         if (!(sendKey instanceof Uint8Array)) {
           throw new Error('Expected buffer in decrypted message')
         }
-        return {
+        return yield {
           sender: new Sender({ sendKey }),
           receiver: bob.newReceiver(),
           finalMessage: (yield bob.sendKey()) as Uint8Array
@@ -277,8 +277,8 @@ function create (crypto: ICryptoCore): IConsentoCrypto {
     }
 
     decrypt (encrypted: IEncryptedMessage): ICancelable<IDecryption> {
-      return cancelable(function * () {
-        return crypto.decryptMessage(
+      return cancelable<IDecryption, Receiver>(function * () {
+        return yield crypto.decryptMessage(
           yield this.id(),
           yield this._signKey,
           yield this._receiveKey,
@@ -358,8 +358,8 @@ function create (crypto: ICryptoCore): IConsentoCrypto {
     }
 
     encrypt (message: IEncodable): ICancelable<IEncryptedMessage> {
-      return cancelable(function * () {
-        return crypto.encryptMessage(
+      return cancelable<IEncryptedMessage, Sender>(function * () {
+        return yield crypto.encryptMessage(
           yield this.id(),
           yield this._signKey,
           yield this._sendKey,
