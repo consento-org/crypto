@@ -315,6 +315,16 @@ class Cancelable <T, TReturn = any, TScope = undefined> extends AbstractCancelab
 }
 
 // eslint-disable-next-line @typescript-eslint/promise-function-async
+export function abortCancelable <T> (template: (signal: AbortSignal) => Promise<T>): ICancelable<T> {
+  const controller = new AbortController()
+  return new SplitCancelable({
+    // eslint-disable-next-line @typescript-eslint/require-await
+    cancel: async (): Promise<void> => controller.abort(),
+    promise: template(controller.signal)
+  })
+}
+
+// eslint-disable-next-line @typescript-eslint/promise-function-async
 export function splitCancelable <T> (split: ISplitCancelable<T>): ICancelable<T> {
   return new SplitCancelable(split)
 }

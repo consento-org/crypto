@@ -1,4 +1,4 @@
-import { cancelable, CancelError, splitCancelable, ICancelable } from '../Cancelable'
+import { cancelable, CancelError, splitCancelable, ICancelable, abortCancelable } from '../Cancelable'
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const noop = (): void => {}
@@ -691,5 +691,27 @@ describe('split support', () => {
       expect(err.message).toBe('hello')
     }
     expect(p.cancelled).toBe(false)
+  })
+})
+describe('abort signal', () => {
+  it('can be instantiated', async () => {
+    const data = await abortCancelable(async (signal: AbortSignal): Promise<boolean> => {
+      expect(signal).toBeInstanceOf(AbortSignal)
+      // @ts-ignore TS2339
+      return Promise.resolve(true)
+    })
+    expect(data).toBe(true)
+  })
+  it('cancels are passed through', () => {
+    let abortTriggered = false
+    const p = abortCancelable(async (signal: AbortSignal): Promise<boolean> => {
+      signal.addEventListener('abort', () => {
+        abortTriggered = true
+      })
+      return new Promise<null>(noop)
+    })
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    p.cancel()
+    expect(abortTriggered).toBe(true)
   })
 })
