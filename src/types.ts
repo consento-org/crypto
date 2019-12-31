@@ -2,6 +2,8 @@ import { IEncryptedMessage, IDecryption } from './core/types'
 import { IEncodable } from './util/buffer'
 import { ICancelable } from './util/cancelable'
 
+export { ICancelable, ISplitCancelable, TCancelable } from './util/cancelable'
+
 export { IEncryptedMessage, IDecryption, IEncodable }
 
 export interface IAnnonymousOptions {
