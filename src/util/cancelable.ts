@@ -1,4 +1,5 @@
 export interface ICancelable <T = any> extends Promise<T> {
+  name?: string
   cancel (): Promise<void>
   readonly cancelled: boolean
   then <TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): ICancelable<TResult1 | TResult2>
@@ -7,6 +8,7 @@ export interface ICancelable <T = any> extends Promise<T> {
 }
 
 export interface ISplitCancelable <T = any> {
+  name?: string
   cancel (): Promise<void>
   promise: Promise<T>
 }
@@ -57,8 +59,10 @@ class AbstractCancelable <TReturn> extends Promise<TReturn> {
   _data: TReturn
   cancelled: boolean = false
   _children: Set<ICancelable>
-  constructor () {
+  name: string
+  constructor (name?: string) {
     super(noop)
+    this.name = name
     const start = frame()
     const doReject = (): void => {
       this._resolved = undefined
@@ -258,15 +262,13 @@ class CancelableWrap <T, TResult1, TResult2 = never> extends AbstractCancelable<
 export type TCancelable<TReturn = any, TScope = undefined, T = any> = (this: TScope, child: <TChild> (cancelable: ICancelable<TChild>) => ICancelable<TChild>) => IterableIterator<T | TReturn>
 
 // eslint-disable-next-line @typescript-eslint/promise-function-async
-export function cancelable <TReturn = any, TScope = undefined, T = any> (generator: TCancelable<TReturn, TScope, T>, scope?: TScope): ICancelable<TReturn> {
-  return new Cancelable(generator, scope)
+export function cancelable <TReturn = any, TScope = undefined, T = any> (generator: TCancelable<TReturn, TScope, T>, scope?: TScope, name?: string): ICancelable<TReturn> {
+  return new Cancelable(generator, scope, name)
 }
 
 class Cancelable <TReturn = any, TScope = undefined, T = any> extends AbstractCancelable<TReturn> implements ICancelable<TReturn> {
-  name?: string
-  constructor (generator: TCancelable<TReturn, TScope, T>, scope?: TScope) {
-    super()
-    this.name = name
+  constructor (generator: TCancelable<TReturn, TScope, T>, scope?: TScope, name?: string) {
+    super(name)
     let iter: IterableIterator<any>
     try {
       // eslint-disable-next-line @typescript-eslint/promise-function-async
@@ -317,12 +319,13 @@ class Cancelable <TReturn = any, TScope = undefined, T = any> extends AbstractCa
 }
 
 // eslint-disable-next-line @typescript-eslint/promise-function-async
-export function abortCancelable <T> (template: (signal: AbortSignal) => Promise<T>): ICancelable<T> {
+export function abortCancelable <T> (template: (signal: AbortSignal) => Promise<T>, name?: string): ICancelable<T> {
   const controller = new AbortController()
   return new SplitCancelable({
     // eslint-disable-next-line @typescript-eslint/require-await
     cancel: async (): Promise<void> => controller.abort(),
-    promise: template(controller.signal)
+    promise: template(controller.signal),
+    name
   })
 }
 
@@ -333,7 +336,7 @@ export function splitCancelable <T> (split: ISplitCancelable<T>): ICancelable<T>
 
 class SplitCancelable <T> extends AbstractCancelable<T> implements ICancelable<T> {
   constructor (split: ISplitCancelable<T>) {
-    super()
+    super(split.name)
     const reject = this._reject
     this._reject = (error: Error) => {
       // This will only be called by .cancel() - the error will always be a CancelError

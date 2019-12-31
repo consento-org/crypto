@@ -126,6 +126,11 @@ describe('regular use', () => {
     expect(a).toBe(1)
     expect(b).toBe(2)
   })
+  it('cancelables can be named', () => {
+    expect(cancelable(function * () {
+      return yield 'hello'
+    }, null, 'abcd').name).toBe('abcd')
+  })
 })
 describe('finally', () => {
   it('is executed when resolved', async () => {
