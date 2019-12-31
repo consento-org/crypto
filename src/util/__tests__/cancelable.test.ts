@@ -1,4 +1,4 @@
-import { cancelable, CancelError, splitCancelable, ICancelable, abortCancelable } from '../Cancelable'
+import { cancelable, CancelError, splitCancelable, ICancelable, abortCancelable } from '../cancelable'
 
 // eslint-disable-next-line @typescript-eslint/no-empty-function
 const noop = (): void => {}

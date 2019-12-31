@@ -1,3 +1,3 @@
 export { setup } from './setup'
-export * from './util/Cancelable'
+export * from './util/cancelable'
 export * from './types'

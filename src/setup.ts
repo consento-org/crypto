@@ -4,7 +4,7 @@ import { bufferToString, bufferCompare, IEncodable, Buffer } from './util/buffer
 import { toPromise } from './util/toPromise'
 import { IEncryptedMessage, ICryptoCore, IDecryption } from './core/types'
 import { extPromise, IExtPromise } from './util/extPromise'
-import { cancelable, ICancelable } from './util/Cancelable'
+import { cancelable, ICancelable } from './util/cancelable'
 import {
   IConsentoCrypto,
   IAnnonymous,
