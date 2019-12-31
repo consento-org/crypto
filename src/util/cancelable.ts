@@ -255,16 +255,16 @@ class CancelableWrap <T, TResult1, TResult2 = never> extends AbstractCancelable<
   }
 }
 
-export type TChildOp<TReturn = any, TScope = undefined, T = any> = (this: TScope, child: <TChild> (cancelable: ICancelable<TChild>) => ICancelable<TChild>) => IterableIterator<T | TReturn>
+export type TCancelable<TReturn = any, TScope = undefined, T = any> = (this: TScope, child: <TChild> (cancelable: ICancelable<TChild>) => ICancelable<TChild>) => IterableIterator<T | TReturn>
 
 // eslint-disable-next-line @typescript-eslint/promise-function-async
-export function cancelable <TReturn = any, TScope = undefined, T = any> (generator: TChildOp<TReturn, TScope, T>, scope?: TScope): ICancelable<TReturn> {
+export function cancelable <TReturn = any, TScope = undefined, T = any> (generator: TCancelable<TReturn, TScope, T>, scope?: TScope): ICancelable<TReturn> {
   return new Cancelable(generator, scope)
 }
 
 class Cancelable <TReturn = any, TScope = undefined, T = any> extends AbstractCancelable<TReturn> implements ICancelable<TReturn> {
   name?: string
-  constructor (generator: TChildOp<TReturn, TScope, T>, scope?: TScope) {
+  constructor (generator: TCancelable<TReturn, TScope, T>, scope?: TScope) {
     super()
     this.name = name
     let iter: IterableIterator<any>
