@@ -23,11 +23,12 @@ export function concatUint8Arrays (arrays: Uint8Array[]): Uint8Array {
   return combined
 }
 
-export type IEncodable = Uint8Array | string | object
+export type IStringOrBuffer = Uint8Array | string
+export type IEncodable = IStringOrBuffer | object
 
 export function anyToBuffer (message: IEncodable): Uint8Array {
   if (typeof message === 'function') {
-    throw new Error('Function not supported')
+    throw Object.assign(new Error('Cannot turn a function into a buffer'), { code: 'function-not-supported' })
   }
   if (message instanceof Buffer) {
     return Buffer.concat([MESSAGE_BINARY_BUFFER, message] as Uint8Array[])
@@ -39,6 +40,13 @@ export function anyToBuffer (message: IEncodable): Uint8Array {
     return concatUint8Arrays([MESSAGE_STRING, Buffer.from(message)])
   }
   return concatUint8Arrays([MESSAGE_JSON, Buffer.from(JSON.stringify(message))])
+}
+
+export function toBuffer (stringOrBuffer: IStringOrBuffer): Uint8Array {
+  if (typeof stringOrBuffer === 'string') {
+    return Buffer.from(stringOrBuffer, 'base64')
+  }
+  return stringOrBuffer
 }
 
 export function bufferCompare (a: Uint8Array, b: Uint8Array): number {
@@ -76,6 +84,6 @@ export function bufferToAny (buffer: Uint8Array): IEncodable {
     case MESSAGE_JSON[0]:
       return JSON.parse(bufferToString(buffer.slice(1)))
     default:
-      throw new Error('Couldnt decrypt: Unknown object type.')
+      throw Object.assign(new Error(`Couldnt deserialize from buffer: Unknown object type[${buffer[0]}].`), { code: 'deserialization-error', type: buffer[0] })
   }
 }

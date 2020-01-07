@@ -3,6 +3,16 @@
 `@consento/crypto` is a set of crypto primitives useful for the communication within the
 consento workflow.
 
+## Goal
+
+There are several crypto implementations out there, some work well on the server others work
+in the browser, however due to asynchronisity issue in the libraries (some are sync, some async)
+they don't work on either system. This library simplifies existing API's to a distilled
+version that will work easily on server and mobile phones.
+
+The implementation offered is as synchronous as possible, offering serialization (toJSON/Classes)
+for all data types.
+
 ## Setup the crypto system
 
 In order to be quick in node.js and have a functional react-native-compatible implementation
@@ -29,13 +39,13 @@ messages through public channels:
 
 
 ```javascript
-const { Sender } = setup(sodium)
+const { createSender } = setup(sodium)
 ```
 
 You can create a new communication channel by creating a new sender:
 
 ```javascript
-const sender = Sender.create()
+const sender = await createSender()
 sender.id // public channel id - can be shared with other people - also used to verify if a message was properly sent.
 sender.receiveKey // channel reader id - to be used for decrypting sent messages
 sender.sendKey // encryption key for messages
@@ -47,9 +57,10 @@ A `Sender` &gt; `Receiver` &gt; `Annonymous` and there are methods to create a r
 instance out of a sender instance:
 
 ```javascript
-const sender = Sender.create()
-const receiver = sender.newReceiver()
-const annonymous = sender.newAnnonymous()
+const { createSender, toReceiver, toAnnonymous } = setup(sodium)
+const sender = await createSender()
+const receiver = toReceiver(sender)
+const annonymous = toAnnonymous(sender)
 ```
 
 Every instance can verify a given message for a channel:
@@ -79,36 +90,34 @@ const encrypted: IEncryptedMessage = await sender.encrypt(message)
 
 ### De-/Serialization
 
-The Sender/Receiver/Annonymous prototypes can be easily stored and restored using:
+The default created Sender/Receiver/Annonymous instances can be serialized/deserialized
+using common JSON structs:
 
 ```javascript
-const senderJson = await sender.quickJSON()
+const { Sender } = setup(sodium)
+const senderJson = sender.toJSON()
 const restoredSender = new Sender(json)
 ```
-
-Beside the `quickJSON` there is also a `smallJSON` option. `quickJSON` can be
-restored quicker but requires a bit more memory. `smallJSON` needs more memory but
-the restoring process is a bit slower.
 
 ## Creating a handshake
 
 `crypto` also holds primitives for a decentralized handshake mechanism.
 
 ```javascript
-const { HandshakeInit, HandshakeAccept } = setup(sodium)
+const { initHandshake, acceptHandshake } = setup(sodium)
 ```
 
-`HandshakeInit` is to be used by the first person - "**A**lice".
+`initHandshake` is to be used by the first person - "**A**lice".
 
-`HandshakeAccept` is to be used by the second person - "**B**ob".
+`acceptHandshake` is to be used by the second person - "**B**ob".
 
 How the handshake works:
 
 1. **A**lice needs to create the initial message:
 
     ```javascript
-    const alice = new HandshakeInit()
-    const initMessage = await alice.initMessage()
+    const alice = await initHandshake()
+    const initMessage = alice.firstMessage
     ```
 
 2. **A**lice needs to listen to the channel with the id `alice.receiver.id` for answers that may come from **B**ob.
@@ -116,23 +125,26 @@ How the handshake works:
 4. **B**ob needs to receive the initial message
 
     ```javascript
-    const bob = new HandshakeAccept(initMessage)
+    const bob = await acceptHandshake(firstMessage)
     ```
 
 5. **B**ob needs to listen to the channel with the id `bob.receiver.id` for the final message from **A**lice.
 6. **B**ob needs to send the message, encrypted to the channel with the id: `bob.sender.id`:
 
     ```javascript
-    await bob.sender.encrypt(await bob.acceptMessage())
+    await bob.sender.encrypt(bob.acceptMessage)
     ```
 
 7. **A**lice has to receive the acception message and can generate the channels out of it.
 
     ```javascript
-    const package = await alice.confirm((await alice.receiver.decrypt(acceptMessage)).body)
+    const decryptedAcceptMessage = (await decrypt(alice.receiver, acceptMessage)).body
+    const package = await confirmHandshake(alice, decryptedAcceptMessage)
     const {
-      sender: aliceToBobSender, // channel to send messages to Bob
-      receiver: bobToAliceReceiver, // channel to receive messages from Bob
+      connection: {
+        sender: aliceToBobSender, // channel to send messages to Bob
+        receiver: bobToAliceReceiver, // channel to receive messages from Bob
+      },
       finalMessage
     } = package
     ```
@@ -146,7 +158,7 @@ How the handshake works:
 9. **B**ob can now finalize the handshake
 
     ```javascript
-    const { sender: bobToAliceSender, receiver: aliceToBobReceiver } = await bob.finalize(finalMessage)
+    const { sender: bobToAliceSender, receiver: aliceToBobReceiver } = await finalize(bob, finalMessage)
     ```
 
 Now **A**lice and **B**ob have each two channels: one to send data to, one to receive data from.

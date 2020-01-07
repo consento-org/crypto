@@ -9,11 +9,11 @@ cores.forEach(({ name, crypto }) => {
     return crypto.verify(channelId, message.signature, message.body)
   }
 
-  const senderEncryptMessage = (annonymous: IAnnonymousKeys, channelWriteKey: Uint8Array, message: any): Promise<IEncryptedMessage> => {
+  const senderEncryptMessage = async (annonymous: IAnnonymousKeys, channelWriteKey: Uint8Array, message: any): Promise<IEncryptedMessage> => {
     return crypto.encryptMessage(annonymous.read, annonymous.write, channelWriteKey, message)
   }
 
-  const receiverDecryptMessage = (annonymous: IAnnonymousKeys, channelReadKey: Uint8Array, message: IEncryptedMessage): Promise<IEncodable> => {
+  const receiverDecryptMessage = async (annonymous: IAnnonymousKeys, channelReadKey: Uint8Array, message: IEncryptedMessage): Promise<IEncodable> => {
     return crypto.decryptMessage(annonymous.read, annonymous.write, channelReadKey, message)
   }
 
