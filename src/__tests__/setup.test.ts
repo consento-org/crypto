@@ -12,7 +12,6 @@ for (const { name, crypto } of cores) {
     const {
       createSender,
       Sender, Receiver, Annonymous,
-      toReceiver, toAnnonymous,
       createSenderFromSendKey, createReceiverFromReceiveKey
     } = variant
     it('a new sender knows all the secrets', async () => {
@@ -70,7 +69,7 @@ for (const { name, crypto } of cores) {
     })
 
     it('a receiver can be restored from its toJSON representation', async () => {
-      const original = toReceiver(await createSender())
+      const original = (await createSender()).newReceiver()
       const json = original.toJSON()
       expect(Object.keys(json)).toEqual(['id', 'receiveKey'])
       expect(typeof json.receiveKey).toBe('string')
@@ -83,7 +82,7 @@ for (const { name, crypto } of cores) {
     })
 
     it('a receiver can be restored from its receiveKey only', async () => {
-      const original = toReceiver(await createSender())
+      const original = (await createSender()).newReceiver()
       const recovered = await createReceiverFromReceiveKey(original.receiveKey)
       expect(recovered.idBase64).toBe(original.idBase64)
       expect(recovered.equals(original)).toBe(true)
@@ -93,7 +92,7 @@ for (const { name, crypto } of cores) {
     })
 
     it('a annonymous can be restored from its toJSON representation', async () => {
-      const original = toAnnonymous(await createSender())
+      const original = (await createSender()).newAnnonymous()
       const json = original.toJSON()
       expect(Object.keys(json)).toEqual(['id'])
       expect(typeof json.id).toBe('string')
@@ -124,7 +123,7 @@ for (const { name, crypto } of cores) {
 
     it('signing and verifying with a partial channel', async () => {
       const sender = await createSender()
-      const annonymous = toAnnonymous(sender)
+      const annonymous = sender.newAnnonymous()
       const body = Buffer.from('abcd')
       const signature = await sender.sign(body)
       expect(await annonymous.verify(signature, body)).toBe(true)
@@ -134,7 +133,7 @@ for (const { name, crypto } of cores) {
       const sender = await createSender()
       const original = 'Hello World'
       const message = await sender.encrypt(original)
-      const receiver = toReceiver(sender)
+      const receiver = sender.newReceiver()
       expect((await receiver.decrypt(message)).body).toBe(original)
     })
 
@@ -155,20 +154,20 @@ for (const { name, crypto } of cores) {
     })
 
     it('receiver as string', async () => {
-      const receiver = toReceiver(await createSender())
+      const receiver = (await createSender()).newReceiver()
       expect(await receiver.toString()).toBe(`Receiver[receiveKey=${bufferToString(receiver.receiveKey, 'base64')}]`)
     })
 
     it('annonymous as string', async () => {
-      const annonymous = toAnnonymous(await createSender())
+      const annonymous = (await createSender()).newAnnonymous()
       expect(await annonymous.toString()).toBe(`Annonymous[id=${annonymous.idBase64}]`)
     })
 
     it('can be compared to any other combination of channels', async () => {
       const sender = await createSenderFromSendKey('uZPG3e99DnfSbURVKClY3TNLkgwT6d/driyJmZmV4gi2BSkIJHjmoU10MdBJBHYHeDLoUZSCZLDDQs1jJ2Hksg==')
       const otherSender = await createSenderFromSendKey('xfM6Hn7mFcw8FyPzZkqVttyjlRB/8xx6p75+jrKurVuJvca/GSwcO4m5mXtbHH007vcNbH8WhT7acMe5fl3fEA==')
-      const receiver = toReceiver(sender)
-      const annonymous = toAnnonymous(sender)
+      const receiver = sender.newReceiver()
+      const annonymous = sender.newAnnonymous()
 
       expect(sender.compare(receiver)).toBe(1)
       expect(sender.compare(annonymous)).toBe(1)
@@ -178,7 +177,7 @@ for (const { name, crypto } of cores) {
       expect(receiver.compare(annonymous)).toBe(1)
       expect(annonymous.compare(sender)).toBe(-1)
       expect(annonymous.compare(receiver)).toBe(-1)
-      expect(annonymous.compare(toAnnonymous(otherSender))).toBe(1)
+      expect(annonymous.compare(otherSender.newAnnonymous())).toBe(1)
       expect(annonymous.compare(null)).toBe(1)
       expect(annonymous.compare(undefined)).toBe(1)
     })

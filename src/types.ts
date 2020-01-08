@@ -44,6 +44,7 @@ export interface IReceiver extends IAnnonymous {
   receiveKey: Uint8Array
   signKey: Promise<Uint8Array>
   toJSON(): IReceiverJSON
+  newAnnonymous(): IAnnonymous
   sign(data: Uint8Array): Promise<Uint8Array>
   decrypt(encrypted: IEncryptedMessage): ICancelable<IDecryption>
 }
@@ -60,6 +61,7 @@ export interface ISender extends IReceiver {
   [senderFlag]: true
   sendKey: Uint8Array
   toJSON(): ISenderJSON
+  newReceiver(): IReceiver
   encrypt(message: IEncodable): ICancelable<IEncryptedMessage>
 }
 
@@ -138,8 +140,6 @@ export interface ICryptoPrimitives {
   createReceiverFromReceiveKey (receiveKey: IStringOrBuffer): Promise<IReceiver>
   createSenderFromSendKey (sendKey: IStringOrBuffer): Promise<ISender>
   createSender(): Promise<ISender>
-  toReceiver(input: ISender | IReceiver): IReceiver
-  toAnnonymous(input: ISender | IReceiver | IAnnonymous): IAnnonymous
   Annonymous: new (opts: IAnnonymousOptions) => IAnnonymous
   Receiver: new (opts: IReceiverOptions) => IReceiver
   Sender: new (opts: ISenderOptions) => ISender

@@ -90,6 +90,10 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
       return this._receiveKeyBase64
     }
 
+    newAnnonymous (): IAnnonymous {
+      return new Annonymous(this)
+    }
+
     compare (other: IAnnonymous, force: boolean = false): number {
       if (!(other instanceof Receiver)) {
         return (force ? -1 : 1)
@@ -145,6 +149,10 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
         this._sendKeyBase64 = bufferToString(this.sendKey, 'base64')
       }
       return this._sendKeyBase64
+    }
+
+    newReceiver (): IReceiver {
+      return new Receiver(this)
     }
 
     compare (other: any, force: boolean = false): number {
@@ -214,12 +222,6 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
       const { read: receiveKey, write: sendKey } = await crypto.createKeys()
       const { read: id, write: signKey } = await crypto.deriveAnnonymousKeys(receiveKey)
       return new Sender({ id, signKey: Promise.resolve(signKey), receiveKey, sendKey })
-    },
-    toReceiver (input: ISender): IReceiver {
-      return new Receiver(input)
-    },
-    toAnnonymous (input: ISender | IReceiver): IAnnonymous {
-      return new Annonymous(input)
     },
     Annonymous,
     Receiver,

@@ -22,7 +22,7 @@ function processHandshake (msg: Uint8Array): {
   }
 }
 
-export function setupHandshake (crypto: ICryptoCore, { createSender, createSenderFromSendKey, toReceiver, Receiver, Sender, Connection }: ICryptoPrimitives): ICryptoHandshake {
+export function setupHandshake (crypto: ICryptoCore, { createSender, createSenderFromSendKey, Receiver, Connection }: ICryptoPrimitives): ICryptoHandshake {
   class HandshakeInit implements IHandshakeInit {
     receiver: IReceiver
     firstMessage: Uint8Array
@@ -55,7 +55,7 @@ export function setupHandshake (crypto: ICryptoCore, { createSender, createSende
         return yield new HandshakeConfirmation({
           connection: new Connection({
             sender,
-            receiver: toReceiver(bob)
+            receiver: bob.newReceiver()
           }),
           // In case you are wondering why we not just simply return "bob" as sender
           // but instead pass it in two messages: the reason is that without this step
@@ -108,7 +108,7 @@ export function setupHandshake (crypto: ICryptoCore, { createSender, createSende
   return {
     async initHandshake (): Promise<HandshakeInit> {
       const tempChannel = await createSender()
-      const receiver = toReceiver(tempChannel)
+      const receiver = tempChannel.newReceiver()
       const { write: confirmKey, read: receiveKey } = await crypto.initHandshake()
       return new HandshakeInit({
         receiver,
@@ -131,7 +131,7 @@ export function setupHandshake (crypto: ICryptoCore, { createSender, createSende
       const sender = await createSender()
       return new HandshakeAccept({
         sender: await createSenderFromSendKey(sendKey),
-        receiver: toReceiver(sender),
+        receiver: sender.newReceiver(),
         acceptMessage: {
           token: bufferToString(keys.read, 'base64'),
           secret: bufferToString(await crypto.encrypt(secretKey, sender.sendKey), 'base64')
