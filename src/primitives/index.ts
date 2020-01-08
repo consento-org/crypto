@@ -215,13 +215,17 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
     async createSenderFromSendKey (sendKey: IStringOrBuffer): Promise<ISender> {
       const sendKeySync = toBuffer(sendKey)
       const receiveKey = await crypto.deriveReadKey(sendKeySync)
-      const { read: id, write: signKey } = await crypto.deriveAnnonymousKeys(receiveKey)
-      return new Sender({ id, signKey: Promise.resolve(signKey), receiveKey, sendKey: sendKeySync })
+      const { read: id, write: signKeyValue } = await crypto.deriveAnnonymousKeys(receiveKey)
+      // @ts-ignore - some Typescript versions forgot to declare/define the resolve property: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve
+      const signKey = Promise.resolve(signKeyValue)
+      return new Sender({ id, signKey, receiveKey, sendKey: sendKeySync })
     },
     async createSender (): Promise<ISender> {
       const { read: receiveKey, write: sendKey } = await crypto.createKeys()
-      const { read: id, write: signKey } = await crypto.deriveAnnonymousKeys(receiveKey)
-      return new Sender({ id, signKey: Promise.resolve(signKey), receiveKey, sendKey })
+      const { read: id, write: signKeyValue } = await crypto.deriveAnnonymousKeys(receiveKey)
+      // @ts-ignore - some Typescript versions forgot to declare/define the resolve property: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve
+      const signKey = Promise.resolve(signKeyValue)
+      return new Sender({ id, signKey, receiveKey, sendKey })
     },
     Annonymous,
     Receiver,
