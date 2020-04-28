@@ -138,7 +138,7 @@ How the handshake works:
 7. **A**lice has to receive the acception message and can generate the channels out of it.
 
     ```javascript
-    const decryptedAcceptMessage = (await decrypt(alice.receiver, acceptMessage)).body
+    const decryptedAcceptMessage = (await alice.receiver.decryptMessage(acceptMessage)).body
     const package = await confirmHandshake(alice, decryptedAcceptMessage)
     const {
       connection: {
@@ -158,7 +158,7 @@ How the handshake works:
 9. **B**ob can now finalize the handshake
 
     ```javascript
-    const { sender: bobToAliceSender, receiver: aliceToBobReceiver } = await finalize(bob, finalMessage)
+    const { sender: bobToAliceSender, receiver: aliceToBobReceiver } = await bob.finalize(finalMessage)
     ```
 
 Now **A**lice and **B**ob have each two channels: one to send data to, one to receive data from.
