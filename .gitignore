@@ -1,3 +1,4 @@
 .tmp
 dist
 package-lock.json
+coverage
