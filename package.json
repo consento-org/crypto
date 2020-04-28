@@ -39,13 +39,13 @@
   ],
   "dependencies": {
     "@consento/libsodium-wrappers-sumo": "^0.7.7",
-    "buffer": "^5.4.3",
+    "buffer": "^5.6.0",
     "sodium-universal": "^2.0.0"
   },
   "devDependencies": {
-    "@consento/sync-randombytes": "^1.0.3",
+    "@consento/sync-randombytes": "^1.0.4",
     "@leichtgewicht/pack-ts": "^1.0.0",
-    "@types/jest": "^24.0.24",
+    "@types/jest": "^25.2.1",
     "@types/libsodium-wrappers-sumo": "^0.7.3",
     "@typescript-eslint/eslint-plugin": "^2.13.0",
     "eslint": "^6.8.0",
@@ -54,9 +54,9 @@
     "eslint-plugin-node": "^11.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
-    "jest": "^24.9.0",
-    "ts-jest": "^24.2.0",
-    "typescript": "^3.7.4"
+    "jest": "^25.4.0",
+    "ts-jest": "^25.4.0",
+    "typescript": "^3.8.3"
   },
   "repository": {
     "type": "git",
