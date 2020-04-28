@@ -18,51 +18,63 @@ export interface IAnnonymousOptions {
   id: IStringOrBuffer
 }
 
-export interface IAnnonymous {
-  [annonymousFlag]: true
-  id: Uint8Array
-  idBase64: string
+export interface IComparable<Base> {
+  equals(other: Base): boolean
+  compare(other: Base): number
+}
+
+export interface IChannelId {
+  readonly id: Uint8Array
+  readonly idBase64: string
   readonly idHex: string
-  equals(other: IAnnonymous): boolean
-  compare(other: IAnnonymous, _?: boolean): number
+}
+
+export interface IAnnonymous extends IComparable<IAnnonymous>, IChannelId {
+  [annonymousFlag]: true
   toJSON(): IAnnonymousJSON
   verify(signature: Uint8Array, body: Uint8Array): Promise<boolean>
   verifyMessage(message: IEncryptedMessage): Promise<boolean>
 }
 
-export interface IReceiverJSON extends IAnnonymousJSON {
-  receiveKey: string
-}
-
-export interface IReceiverOptions extends IAnnonymousOptions {
-  receiveKey: IStringOrBuffer
-  signKey?: Promise<Uint8Array>
-}
-
-export interface IReceiver extends IAnnonymous {
-  [receiverFlag]: true
-  receiveKey: Uint8Array
-  signKey: Promise<Uint8Array>
-  toJSON(): IReceiverJSON
-  newAnnonymous(): IAnnonymous
-  sign(data: Uint8Array): Promise<Uint8Array>
-  decrypt(encrypted: IEncryptedMessage): ICancelable<IDecryption>
-}
-
-export interface ISenderJSON extends IReceiverJSON {
+export interface ISenderJSON {
   sendKey: string
 }
 
-export interface ISenderOptions extends IReceiverOptions {
+export interface ISenderOptions {
+  id?: IStringOrBuffer
   sendKey: IStringOrBuffer
 }
 
-export interface ISender extends IReceiver {
+export interface ISender extends IComparable<ISender>, IChannelId {
   [senderFlag]: true
-  sendKey: Uint8Array
   toJSON(): ISenderJSON
-  newReceiver(): IReceiver
+  readonly sendKey: Uint8Array
+  readonly encryptKey: Uint8Array
+  readonly signKey: Uint8Array
+  readonly sender: this
+  readonly annonymous: IAnnonymous
+  sign(data: Uint8Array): Promise<Uint8Array>
   encrypt(message: IEncodable): ICancelable<IEncryptedMessage>
+}
+
+export interface IReceiverJSON {
+  receiveKey: string
+}
+
+export interface IReceiverOptions {
+  id?: IStringOrBuffer
+  sendKey?: IStringOrBuffer
+  receiveKey: IStringOrBuffer
+}
+
+export interface IReceiver extends IComparable<IReceiver>, IChannelId {
+  [receiverFlag]: true
+  readonly receiveKey: Uint8Array
+  readonly receiver: this
+  readonly sender: ISender
+  readonly annonymous: IAnnonymous
+  toJSON(): IReceiverJSON
+  decrypt(encrypted: IEncryptedMessage): ICancelable<IDecryption>
 }
 
 export interface IConnectionJSON {
@@ -84,19 +96,19 @@ export interface IConnection {
 export interface IHandshakeInitJSON {
   receiver: IReceiverJSON
   firstMessage: string
-  confirmKey: string
+  handshakeSecret: string
 }
 
 export interface IHandshakeInitOptions {
   receiver: IReceiver | IReceiverOptions
   firstMessage: IStringOrBuffer
-  confirmKey: IStringOrBuffer
+  handshakeSecret: IStringOrBuffer
 }
 
 export interface IHandshakeInit {
   receiver: IReceiver
   firstMessage: Uint8Array
-  confirmKey: Uint8Array
+  handshakeSecret: Uint8Array
   toJSON(): IHandshakeInitJSON
   confirm(acceptMessage: IHandshakeAcceptMessage): ICancelable<IHandshakeConfirmation>
 }
@@ -137,9 +149,7 @@ export interface IHandshakeConfirmation {
 }
 
 export interface ICryptoPrimitives {
-  createReceiverFromReceiveKey (receiveKey: IStringOrBuffer): Promise<IReceiver>
-  createSenderFromSendKey (sendKey: IStringOrBuffer): Promise<ISender>
-  createSender(): Promise<ISender>
+  createReceiver(): Promise<IReceiver>
   Annonymous: new (opts: IAnnonymousOptions) => IAnnonymous
   Receiver: new (opts: IReceiverOptions) => IReceiver
   Sender: new (opts: ISenderOptions) => ISender

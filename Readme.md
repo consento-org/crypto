@@ -39,28 +39,34 @@ messages through public channels:
 
 
 ```javascript
-const { createSender } = setup(sodium)
+const { createReceiver } = setup(sodium)
 ```
 
-You can create a new communication channel by creating a new sender:
+You can create a new communication channel by creating a new receiver:
 
 ```javascript
-const sender = await createSender()
-sender.id // public channel id - can be shared with other people - also used to verify if a message was properly sent.
-sender.receiveKey // channel reader id - to be used for decrypting sent messages
-sender.sendKey // encryption key for messages
+const receiver = await createReceiver()
+receiver.receiveKey // allows decryption of messages
+receiver.sender.sendKey // encryption key for sending messages
+receiver.sender.annonymous.id // public channel id - can be shared with other people - also used to verify if a message was properly sent.
+receiver.sender.id // shortcut on the sender for the channel id
+receiver.id // shortcut on the receiver for the channel id
 ```
 
 ### Permission layers
 
-A `Sender` &gt; `Receiver` &gt; `Annonymous` and there are methods to create a receiver/annonymous
+A `Receiver` &gt; `Sender` &gt; `Annonymous` and there are methods to create a receiver/annonymous
 instance out of a sender instance:
 
 ```javascript
-const { createSender, toReceiver, toAnnonymous } = setup(sodium)
-const sender = await createSender()
-const receiver = toReceiver(sender)
-const annonymous = toAnnonymous(sender)
+const { createReceiver } = setup(sodium)
+const receiver = await createReceiver()
+```
+
+you can also destruct each instance:
+
+```javascript
+const { receiver, sender, annonymous } = await createReceiver()
 ```
 
 Every instance can verify a given message for a channel:
@@ -94,9 +100,9 @@ The default created Sender/Receiver/Annonymous instances can be serialized/deser
 using common JSON structs:
 
 ```javascript
-const { Sender } = setup(sodium)
-const senderJson = sender.toJSON()
-const restoredSender = new Sender(json)
+const { Receiver } = setup(sodium)
+const receiverJson = receiver.toJSON()
+const restoredReceiver = new Receiver(json)
 ```
 
 ## Creating a handshake

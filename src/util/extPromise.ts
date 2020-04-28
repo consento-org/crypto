@@ -13,5 +13,6 @@ export function extPromise <T> (): IExtPromise<T> {
   }) as IExtPromise<T>
   result._resolve = _resolve
   result._reject = _reject
+  // eslint-disable-next-line @typescript-eslint/return-await
   return result
 }

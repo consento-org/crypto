@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-throw-literal */
+// ↑ https://github.com/typescript-eslint/typescript-eslint/issues/1841
 import { Buffer } from 'buffer'
 export { Buffer } from 'buffer'
 

@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/no-throw-literal */
+// ↑ https://github.com/typescript-eslint/typescript-eslint/issues/1841
 import { ICryptoCore } from '../core/types'
 import { Buffer, toBuffer, bufferToString, IEncodable } from '../util/buffer'
-import { ICryptoHandshake, IHandshakeInit, IReceiver, ICryptoPrimitives, IHandshakeInitOptions, IHandshakeAccept, ISender, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection } from '../types'
+import { ICryptoHandshake, IHandshakeInit, IReceiver, ICryptoPrimitives, IHandshakeInitOptions, IHandshakeAccept, ISender, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
 import { isReceiver } from '../util/isReceiver'
 import { cancelable, ICancelable } from '../util/cancelable'
 
@@ -13,7 +15,7 @@ function processHandshake (msg: Uint8Array): {
   if (msg[0] !== HANDSHAKE_MSG_VERSION[0]) {
     throw Object.assign(new Error(`Error while processing handshake: Unknown handshake format: ${msg[0]}`), { code: 'unknown-message-format', messageFormat: msg[0] })
   }
-  if (msg.length !== 97) {
+  if (msg.length !== 161) {
     throw Object.assign(new Error(`Error while processing handshake: Invalid handshake size: ${msg.length}`), { code: 'invalid-size', size: msg.length })
   }
   return {
@@ -22,44 +24,47 @@ function processHandshake (msg: Uint8Array): {
   }
 }
 
-export function setupHandshake (crypto: ICryptoCore, { createSender, createSenderFromSendKey, Receiver, Connection }: ICryptoPrimitives): ICryptoHandshake {
+export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, Receiver, Connection }: ICryptoPrimitives): ICryptoHandshake {
   class HandshakeInit implements IHandshakeInit {
     receiver: IReceiver
     firstMessage: Uint8Array
-    confirmKey: Uint8Array
+    handshakeSecret: Uint8Array
 
-    constructor ({ receiver, confirmKey, firstMessage }: IHandshakeInitOptions) {
+    constructor ({ receiver, handshakeSecret, firstMessage }: IHandshakeInitOptions) {
       this.receiver = isReceiver(receiver) ? receiver : new Receiver(receiver)
-      this.confirmKey = toBuffer(confirmKey)
+      this.handshakeSecret = toBuffer(handshakeSecret)
       this.firstMessage = toBuffer(firstMessage)
     }
 
-    toJSON (): any {
+    toJSON (): IHandshakeInitJSON {
       return {
         receiver: this.receiver.toJSON(),
         firstMessage: bufferToString(this.firstMessage, 'base64'),
-        confirmKey: bufferToString(this.confirmKey, 'base64')
+        handshakeSecret: bufferToString(this.handshakeSecret, 'base64')
       }
     }
 
     // eslint-disable-next-line @typescript-eslint/promise-function-async
     confirm (accept: IHandshakeAcceptMessage): ICancelable<IHandshakeConfirmation> {
+      // eslint-disable-next-line @typescript-eslint/return-await
       return cancelable<IHandshakeConfirmation, HandshakeInit>(function * () {
-        const secretKey = (yield crypto.computeSecret(this.confirmKey, Buffer.from(accept.token, 'base64'))) as Uint8Array
-        const bob = (yield createSender()) as ISender
+        const secretKey = (yield crypto.computeSecret(this.handshakeSecret, Buffer.from(accept.token, 'base64'))) as Uint8Array
+        const bob = (yield createReceiver()) as IReceiver
         const sendKey = (yield crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64'))) as IEncodable
         if (!(sendKey instanceof Uint8Array)) {
           throw Object.assign(new Error('Expected buffer in decrypted message'), { code: 'invalid-message' })
         }
-        const sender = (yield createSenderFromSendKey(sendKey)) as ISender
+        const aliceSender = (yield new Sender({ sendKey })) as ISender
         return yield new HandshakeConfirmation({
           connection: new Connection({
-            sender,
-            receiver: bob.newReceiver()
+            sender: aliceSender,
+            receiver: bob.receiver
           }),
           // In case you are wondering why we not just simply return "bob" as sender
           // but instead pass it in two messages: the reason is that without this step
-          finalMessage: bob.sendKey
+          // the API is clearer.
+          // TODO: rethink
+          finalMessage: bob.sender.sendKey
         })
       }, this)
     }
@@ -83,7 +88,7 @@ export function setupHandshake (crypto: ICryptoCore, { createSender, createSende
     async finalize (message: Uint8Array): Promise<IConnection> {
       return new Connection({
         receiver: this.receiver,
-        sender: await createSenderFromSendKey(message)
+        sender: new Sender({ sendKey: message })
       })
     }
   }
@@ -107,16 +112,15 @@ export function setupHandshake (crypto: ICryptoCore, { createSender, createSende
 
   return {
     async initHandshake (): Promise<HandshakeInit> {
-      const tempChannel = await createSender()
-      const receiver = tempChannel.newReceiver()
-      const { write: confirmKey, read: receiveKey } = await crypto.initHandshake()
+      const { receiver, sender } = await createReceiver()
+      const { privateKey: handshakeSecret, publicKey: handshakePublic } = await crypto.initHandshake()
       return new HandshakeInit({
         receiver,
-        confirmKey,
+        handshakeSecret,
         firstMessage: Buffer.concat([
           HANDSHAKE_MSG_VERSION,
-          receiveKey,
-          tempChannel.sendKey
+          handshakePublic,
+          sender.sendKey
         ])
       })
     },
@@ -126,14 +130,14 @@ export function setupHandshake (crypto: ICryptoCore, { createSender, createSende
         token,
         sendKey
       } = processHandshake(firstMessage)
-      const keys = await crypto.initHandshake()
-      const secretKey = await crypto.computeSecret(keys.write, token)
-      const sender = await createSender()
+      const { privateKey: handshakeSecret, publicKey: handshakePublic } = await crypto.initHandshake()
+      const secretKey = await crypto.computeSecret(handshakeSecret, token)
+      const { receiver, sender } = await createReceiver()
       return new HandshakeAccept({
-        sender: await createSenderFromSendKey(sendKey),
-        receiver: sender.newReceiver(),
+        sender: new Sender({ sendKey }),
+        receiver,
         acceptMessage: {
-          token: bufferToString(keys.read, 'base64'),
+          token: bufferToString(handshakePublic, 'base64'),
           secret: bufferToString(await crypto.encrypt(secretKey, sender.sendKey), 'base64')
         }
       })

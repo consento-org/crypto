@@ -37,9 +37,7 @@ describe('regular use', () => {
   it('can be fulfilled with multiple steps', async () => {
     expect(
       await cancelable(function * () {
-        // @ts-ignore TS2339
-        const data = yield Promise.resolve('a')
-        // @ts-ignore TS2339
+        const data = (yield Promise.resolve('a')) as string
         return yield Promise.resolve(`${data}b`)
       })
     ).toBe('ab')
@@ -92,7 +90,6 @@ describe('regular use', () => {
   })
   it('can yield a promise string', async () => {
     expect(await cancelable(function * () {
-      // @ts-ignore TS2339
       return yield Promise.resolve('hello')
     })).toBe('hello')
   })
@@ -117,10 +114,9 @@ describe('regular use', () => {
     })
   })
   it('Return promises are resolved', async () => {
-    // @ts-ignore TS2339
     const a = await Promise.resolve(Promise.resolve(1))
     const b = await cancelable(function * () {
-      // @ts-ignore TS2339
+      // eslint-disable-next-line @typescript-eslint/return-await
       return Promise.resolve(2)
     })
     expect(a).toBe(1)
@@ -148,7 +144,7 @@ describe('finally', () => {
     const first = await cancelable(function * () {
       return 'hello'
     }).finally(async () => {
-      return new Promise<void>(resolve => setTimeout(() => {
+      return await new Promise<void>(resolve => setTimeout(() => {
         second = 'world'
         resolve()
       }, 10))
@@ -173,8 +169,7 @@ describe('finally', () => {
       await cancelable(function * () {
         return 'hello'
       }).finally(async () => {
-        // @ts-ignore TS2339
-        return Promise.reject(new Error('world'))
+        return await Promise.reject(new Error('world'))
       })
       fail('should throw an error')
     } catch (err) {
@@ -184,7 +179,6 @@ describe('finally', () => {
   it('is executed when rejected', async () => {
     let second
     try {
-      // @ts-ignore TS7025
       await cancelable(function * () {
         throw new Error('hello')
       }).finally(() => {
@@ -211,11 +205,10 @@ describe('finally', () => {
   it('can pass a promise that is also executed when rejected', async () => {
     let second
     try {
-      // @ts-ignore TS7025
       await cancelable(function * () {
         throw new Error('hello')
       }).finally(async () => {
-        return new Promise<void>(resolve => setTimeout(() => {
+        return await new Promise<void>(resolve => setTimeout(() => {
           second = 'world'
           resolve()
         }, 10))
@@ -228,12 +221,10 @@ describe('finally', () => {
   })
   it('may pass an rejection on reject', async () => {
     try {
-      // @ts-ignore TS7025
       await cancelable(function * () {
         throw new Error('hello')
       }).finally(async () => {
-        // @ts-ignore TS2339
-        return Promise.reject(new Error('world'))
+        return await Promise.reject(new Error('world'))
       })
       fail('should throw an error')
     } catch (err) {
@@ -256,9 +247,10 @@ describe('finally', () => {
       return 'hello'
     }).finally(async () => {
       p2 = cancelable<void>(function * () {
+        // eslint-disable-next-line @typescript-eslint/return-await
         return new Promise(noop)
       })
-      return p2
+      return await p2
     })
     try {
       await p.cancel()
@@ -379,6 +371,7 @@ describe('unexpected responses', () => {
     })
     expect(await p.then((out: any) => {
       expect(out).toBe('a')
+      // eslint-disable-next-line @typescript-eslint/return-await
       return {
         then (resolve: (res: any) => void): void {
           resolve(1)
@@ -410,8 +403,7 @@ describe('chaining', () => {
         })
           .then(async data => {
             expect(data).toBe('hello')
-            // @ts-ignore TS2339
-            return Promise.resolve('hola')
+            return await Promise.resolve('hola')
           })
       )
     ).toBe('hola')
@@ -555,7 +547,6 @@ describe('chaining', () => {
     await p2
   })
   it('error in a cancel call of a dangling child', async () => {
-    // @ts-ignore TS7025
     const perr = cancelable(function * () {
       throw new Error('hello')
     })
@@ -572,13 +563,13 @@ describe('chaining', () => {
     }
   })
   it('error after cancelling in a cancel call of a dangling child', async () => {
-    // @ts-ignore TS7025
     const perr = cancelable(function * () {
       throw new Error('hello')
     })
     const p = cancelable(function * (child) {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       child(perr)
+      // eslint-disable-next-line @typescript-eslint/return-await
       return new Promise(noop)
     })
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -617,7 +608,6 @@ describe('split support', () => {
     const cancel = async (): Promise<void> => {
       await fail('Cancel called')
     }
-    // @ts-ignore TS2339
     const p2 = Promise.resolve('hi')
     const p = splitCancelable({ cancel, promise: p2 })
     await p2
@@ -628,7 +618,6 @@ describe('split support', () => {
     const cancel = async (): Promise<void> => {
       await fail('Cancel called')
     }
-    // @ts-ignore TS2339
     const p2 = Promise.reject(new Error('hi'))
     const p = splitCancelable({ cancel, promise: p2 })
     try {
@@ -643,7 +632,6 @@ describe('split support', () => {
     const cancel = async (): Promise<void> => {
       called += 1
     }
-    // @ts-ignore TS2339
     const p2 = Promise.reject(new Error('hi'))
     const p = splitCancelable({ cancel, promise: p2 })
     const pCancel = p.cancel()
@@ -682,8 +670,7 @@ describe('split support', () => {
   })
   it('incorrect cancel operation that throws an error', async () => {
     const cancel = async (): Promise<void> => {
-      // @ts-ignore TS2339
-      return Promise.reject(new Error('hello'))
+      return await Promise.reject(new Error('hello'))
     }
     const p = splitCancelable({
       cancel,
@@ -702,8 +689,7 @@ describe('abort signal', () => {
   it('can be instantiated', async () => {
     const data = await abortCancelable(async (signal: AbortSignal): Promise<boolean> => {
       expect(signal).toBeInstanceOf(AbortSignal)
-      // @ts-ignore TS2339
-      return Promise.resolve(true)
+      return await Promise.resolve(true)
     })
     expect(data).toBe(true)
   })
@@ -713,7 +699,7 @@ describe('abort signal', () => {
       signal.addEventListener('abort', () => {
         abortTriggered = true
       })
-      return new Promise<null>(noop)
+      return await new Promise<null>(noop)
     })
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     p.cancel()

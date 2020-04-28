@@ -1,15 +1,50 @@
 import { ICryptoCore, IDecryption, IEncryptedMessage } from '../core/types'
 import {
   IAnnonymous, IAnnonymousOptions, IAnnonymousJSON, annonymousFlag,
-  IReceiver, IReceiverOptions, IReceiverJSON, receiverFlag,
-  ISender, ISenderOptions, ISenderJSON, senderFlag,
+  IReceiver, IReceiverOptions, receiverFlag,
+  ISender, ISenderOptions, senderFlag,
   ICryptoPrimitives,
   IConnectionOptions,
-  IConnectionJSON
+  IConnectionJSON,
+  ISenderJSON,
+  IReceiverJSON
 } from '../types'
 
 import { ICancelable, cancelable } from '../util/cancelable'
-import { Buffer, bufferToString, bufferCompare, toBuffer, IStringOrBuffer, IEncodable } from '../util/buffer'
+import { Buffer, bufferToString, bufferCompare, toBuffer, IEncodable } from '../util/buffer'
+import { isReceiver } from '../util/isReceiver'
+import { isSender } from '../util/isSender'
+
+const VERIFY_KEY_SIZE = 32
+const VERIFY_KEY_START = 0
+const VERIFY_KEY_END = VERIFY_KEY_SIZE
+const SIGN_KEY_SIZE = 64
+const SIGN_KEY_START = VERIFY_KEY_END
+const SIGN_KEY_END = SIGN_KEY_START + SIGN_KEY_SIZE
+const ENCRYPT_KEY_SIZE = 32
+const ENCRYPT_KEY_START = SIGN_KEY_END
+const ENCRYPT_KEY_END = ENCRYPT_KEY_START + ENCRYPT_KEY_SIZE
+const DECRYPT_KEY_START = ENCRYPT_KEY_END
+
+function signKeyFromSendKey (receiveKey: Uint8Array): Uint8Array {
+  return receiveKey.slice(SIGN_KEY_START, SIGN_KEY_END)
+}
+
+function encryptKeyFromSendKey (sendKey: Uint8Array): Uint8Array {
+  return sendKey.slice(ENCRYPT_KEY_START, ENCRYPT_KEY_END)
+}
+
+function decryptKeyFromReceiveKey (receiveKey: Uint8Array): Uint8Array {
+  return receiveKey.slice(DECRYPT_KEY_START)
+}
+
+function verifyKeyFromSendKey (sendKey: Uint8Array): Uint8Array {
+  return sendKey.slice(VERIFY_KEY_START, VERIFY_KEY_END)
+}
+
+function sendKeyFromReceiveKey (receiveKey: Uint8Array): Uint8Array {
+  return receiveKey.slice(VERIFY_KEY_START, ENCRYPT_KEY_END)
+}
 
 export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
   class Annonymous implements IAnnonymous {
@@ -36,18 +71,15 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
       return this._idHex
     }
 
-    equals (other: IAnnonymous): boolean {
+    equals (other: IAnnonymous | ISender | IReceiver): boolean {
       return this.compare(other) === 0
     }
 
-    compare (other: IAnnonymous, force: boolean = false): number {
-      if (!(other instanceof Annonymous)) {
+    compare (other: IAnnonymous | ISender | IReceiver): number {
+      if (isSender(other) || isReceiver(other)) {
         return 1
       }
-      if (force) {
-        return bufferCompare(other.id, this.id)
-      }
-      return other.compare(this, true)
+      return bufferCompare(other.id, this.id)
     }
 
     toJSON (): IAnnonymousJSON {
@@ -61,87 +93,44 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
     }
 
     async verify (signature: Uint8Array, body: Uint8Array): Promise<boolean> {
-      return crypto.verify(this.id, signature, body)
+      return await crypto.verify(this.id, signature, body)
     }
 
     // eslint-disable-next-line @typescript-eslint/require-await
     async verifyMessage (message: IEncryptedMessage): Promise<boolean> {
-      return this.verify(message.signature, message.body)
+      return await this.verify(message.signature, message.body)
     }
   }
 
-  class Receiver extends Annonymous implements IReceiver {
-    [receiverFlag]: true
-    receiveKey: Uint8Array
-    signKey: Promise<Uint8Array>
-    _receiveKeyBase64: string
-
-    constructor (opts: IReceiverOptions) {
-      super({ id: opts.id })
-      this[receiverFlag] = true
-      this.receiveKey = toBuffer(opts.receiveKey)
-      this.signKey = crypto.deriveAnnonymousKeys(this.receiveKey).then(keys => keys.write)
-    }
-
-    get receiveKeyBase64 (): string {
-      if (this._receiveKeyBase64 === undefined) {
-        this._receiveKeyBase64 = bufferToString(this.receiveKey, 'base64')
-      }
-      return this._receiveKeyBase64
-    }
-
-    newAnnonymous (): IAnnonymous {
-      return new Annonymous(this)
-    }
-
-    compare (other: IAnnonymous, force: boolean = false): number {
-      if (!(other instanceof Receiver)) {
-        return (force ? -1 : 1)
-      }
-      if (force) {
-        return bufferCompare(other.receiveKey, this.receiveKey)
-      }
-      return other.compare(this, true)
-    }
-
-    toJSON (): IReceiverJSON {
-      return {
-        id: this.idBase64,
-        receiveKey: this.receiveKeyBase64
-      }
-    }
-
-    toString (): string {
-      return `Receiver[receiveKey=${this.receiveKeyBase64}]`
-    }
-
-    async sign (data: Uint8Array): Promise<Uint8Array> {
-      return crypto.sign(await this.signKey, data)
-    }
-
-    // eslint-disable-next-line @typescript-eslint/promise-function-async
-    decrypt (encrypted: IEncryptedMessage): ICancelable<IDecryption> {
-      return cancelable<IDecryption, Receiver>(function * () {
-        return yield crypto.decryptMessage(
-          this.id,
-          yield this.signKey,
-          this.receiveKey,
-          encrypted
-        )
-      }, this)
-    }
-  }
-
-  class Sender extends Receiver implements ISender {
+  class Sender implements ISender {
     [senderFlag]: true
     sendKey: Uint8Array
     _sendKeyBase64: string
     receiveKeyBase64: any
+    _annonymous: IAnnonymous
+    _signKey: Uint8Array
+    _encryptKey: Uint8Array
 
-    constructor ({ id, sendKey, receiveKey }: ISenderOptions) {
-      super({ id, receiveKey })
+    constructor ({ id, sendKey }: ISenderOptions) {
       this[senderFlag] = true
       this.sendKey = toBuffer(sendKey)
+      if (id !== undefined) {
+        this._annonymous = new Annonymous({ id })
+      }
+    }
+
+    get signKey (): Uint8Array {
+      if (this._signKey === undefined) {
+        this._signKey = signKeyFromSendKey(this.sendKey)
+      }
+      return this._signKey
+    }
+
+    get encryptKey (): Uint8Array {
+      if (this._encryptKey === undefined) {
+        this._encryptKey = encryptKeyFromSendKey(this.sendKey)
+      }
+      return this._encryptKey
     }
 
     get sendKeyBase64 (): string {
@@ -151,40 +140,150 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
       return this._sendKeyBase64
     }
 
-    newReceiver (): IReceiver {
-      return new Receiver(this)
+    get sender (): this {
+      return this
     }
 
-    compare (other: any, force: boolean = false): number {
-      if (!(other instanceof Sender)) {
-        return (force ? -1 : 1)
+    get id (): Uint8Array {
+      return this.annonymous.id
+    }
+
+    get idHex (): string {
+      return this.annonymous.idHex
+    }
+
+    get idBase64 (): string {
+      return this.annonymous.idBase64
+    }
+
+    get annonymous (): IAnnonymous {
+      if (this._annonymous === undefined) {
+        this._annonymous = new Annonymous({ id: verifyKeyFromSendKey(this.sendKey) })
       }
-      if (force) {
-        return bufferCompare(other.sendKey, this.sendKey)
+      return this._annonymous
+    }
+
+    equals (other: IAnnonymous | ISender | IReceiver): boolean {
+      return this.compare(other) === 0
+    }
+
+    compare (other: IAnnonymous | ISender | IReceiver): number {
+      if (isReceiver(other)) {
+        return 1
       }
-      return other.compare(this, true)
+      if (!isSender(other)) {
+        return -1
+      }
+      return bufferCompare(other.sendKey, this.sendKey)
     }
 
     toJSON (): ISenderJSON {
-      return {
-        id: this.idBase64,
-        sendKey: this.sendKeyBase64,
-        receiveKey: this.receiveKeyBase64
-      }
+      return { sendKey: this.sendKeyBase64 }
     }
 
     toString (): string {
       return `Sender[sendKey=${this.sendKeyBase64}]`
     }
 
+    async sign (data: Uint8Array): Promise<Uint8Array> {
+      return await crypto.sign(this.signKey, data)
+    }
+
     // eslint-disable-next-line @typescript-eslint/promise-function-async
     encrypt (message: IEncodable): ICancelable<IEncryptedMessage> {
+      // eslint-disable-next-line @typescript-eslint/return-await
       return cancelable<IEncryptedMessage, Sender>(function * () {
+        // eslint-disable-next-line @typescript-eslint/return-await
         return yield crypto.encryptMessage(
-          this.id,
-          yield this.signKey,
-          this.sendKey,
+          this.signKey,
+          this.encryptKey,
           message
+        )
+      }, this)
+    }
+  }
+
+  class Receiver implements IReceiver {
+    [receiverFlag]: true
+    receiveKey: Uint8Array
+    _receiveKeyBase64: string
+    _sender: ISender
+    _annonymous: IAnnonymous
+
+    constructor ({ id, sendKey, receiveKey }: IReceiverOptions) {
+      this[receiverFlag] = true
+      this.receiveKey = toBuffer(receiveKey)
+      if (sendKey !== undefined) {
+        this._sender = new Sender({ id, sendKey })
+      }
+    }
+
+    get sender (): ISender {
+      if (this._sender === undefined) {
+        this._sender = new Sender({ sendKey: sendKeyFromReceiveKey(this.receiveKey) })
+      }
+      return this._sender
+    }
+
+    get id (): Uint8Array {
+      return this.sender.id
+    }
+
+    get idHex (): string {
+      return this.sender.idHex
+    }
+
+    get idBase64 (): string {
+      return this.sender.idBase64
+    }
+
+    get receiver (): this {
+      return this
+    }
+
+    get annonymous (): IAnnonymous {
+      return this.sender.annonymous
+    }
+
+    get decryptKey (): Uint8Array {
+      return decryptKeyFromReceiveKey(this.receiveKey)
+    }
+
+    get receiveKeyBase64 (): string {
+      if (this._receiveKeyBase64 === undefined) {
+        this._receiveKeyBase64 = bufferToString(this.receiveKey, 'base64')
+      }
+      return this._receiveKeyBase64
+    }
+
+    equals (other: IReceiver | ISender | IAnnonymous): boolean {
+      return this.compare(other) === 0
+    }
+
+    compare (other: IReceiver | ISender | IAnnonymous): number {
+      if (!isReceiver(other)) {
+        return -1
+      }
+      return bufferCompare(other.receiveKey, this.receiveKey)
+    }
+
+    toJSON (): IReceiverJSON {
+      return { receiveKey: this.receiveKeyBase64 }
+    }
+
+    toString (): string {
+      return `Receiver[receiveKey=${this.receiveKeyBase64}]`
+    }
+
+    // eslint-disable-next-line @typescript-eslint/promise-function-async
+    decrypt (encrypted: IEncryptedMessage): ICancelable<IDecryption> {
+      // eslint-disable-next-line @typescript-eslint/return-await
+      return cancelable<IDecryption, Receiver>(function * () {
+        return yield crypto.decryptMessage(
+          this.annonymous.id,
+          this.sender.encryptKey,
+          this.decryptKey,
+          encrypted
         )
       }, this)
     }
@@ -195,8 +294,8 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
     sender: ISender
 
     constructor (opts: IConnectionOptions) {
-      this.receiver = new Receiver(opts.receiver)
-      this.sender = new Sender(opts.sender)
+      this.receiver = (opts.receiver instanceof Receiver) ? opts.receiver : new Receiver(opts.receiver)
+      this.sender = (opts.sender instanceof Sender) ? opts.sender : new Sender(opts.sender)
     }
 
     toJSON (): IConnectionJSON {
@@ -207,25 +306,18 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
     }
   }
   return {
-    async createReceiverFromReceiveKey (receiveKey: IStringOrBuffer): Promise<IReceiver> {
-      const syncReceiveKey = toBuffer(receiveKey)
-      const { read: id } = await crypto.deriveAnnonymousKeys(syncReceiveKey)
-      return new Receiver({ receiveKey: syncReceiveKey, id })
-    },
-    async createSenderFromSendKey (sendKey: IStringOrBuffer): Promise<ISender> {
-      const sendKeySync = toBuffer(sendKey)
-      const receiveKey = await crypto.deriveReadKey(sendKeySync)
-      const { read: id, write: signKeyValue } = await crypto.deriveAnnonymousKeys(receiveKey)
-      // @ts-ignore - some Typescript versions forgot to declare/define the resolve property: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve
-      const signKey = Promise.resolve(signKeyValue)
-      return new Sender({ id, signKey, receiveKey, sendKey: sendKeySync })
-    },
-    async createSender (): Promise<ISender> {
-      const { read: receiveKey, write: sendKey } = await crypto.createKeys()
-      const { read: id, write: signKeyValue } = await crypto.deriveAnnonymousKeys(receiveKey)
-      // @ts-ignore - some Typescript versions forgot to declare/define the resolve property: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/resolve
-      const signKey = Promise.resolve(signKeyValue)
-      return new Sender({ id, signKey, receiveKey, sendKey })
+    async createReceiver (): Promise<IReceiver> {
+      const [encrypt, sign] = await Promise.all([
+        crypto.createEncryptionKeys(),
+        crypto.createSignKeys()
+      ])
+      const sendKey = Buffer.concat([sign.publicKey, sign.privateKey, encrypt.publicKey])
+      const receiver = new Receiver({
+        id: sign.publicKey,
+        sendKey,
+        receiveKey: Buffer.concat([sendKey, encrypt.privateKey])
+      })
+      return receiver
     },
     Annonymous,
     Receiver,

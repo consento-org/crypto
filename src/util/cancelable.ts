@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/promise-function-async */
+/* eslint-disable @typescript-eslint/return-await */
 export interface ICancelable <T = any> extends Promise<T> {
   name?: string
   cancel (): Promise<void>
@@ -125,7 +127,6 @@ class AbstractCancelable <TReturn> extends Promise<TReturn> {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/promise-function-async
   then <TResult3 = TReturn, TResult4 = never> (onfulfilled?: ((value: TReturn) => TResult3 | PromiseLike<TResult3>) | undefined | null, onrejected?: ((reason: any) => TResult4 | PromiseLike<TResult4>) | undefined | null): ICancelable<TResult3 | TResult4> {
     const next = new CancelableWrap(onfulfilled, onrejected)
     if (!this._finished) {
@@ -139,7 +140,7 @@ class AbstractCancelable <TReturn> extends Promise<TReturn> {
       } else {
         this._resolved.push(next._receiveData)
       }
-      next.cancel = async (): Promise<void> => this.cancel()
+      next.cancel = (): Promise<void> => this.cancel()
     } else if (this._done === TDone.ok) {
       next._receiveData(this._data)
     } else {
@@ -148,13 +149,10 @@ class AbstractCancelable <TReturn> extends Promise<TReturn> {
     return next
   }
 
-  // eslint-disable-next-line @typescript-eslint/promise-function-async
   catch <TResult3> (onrejected?: ((reason: any) => TResult3 | PromiseLike<TResult3>) | undefined | null): ICancelable<TResult3> {
-    // @ts-ignore TS2322
     return this.then(null, onrejected)
   }
 
-  // eslint-disable-next-line @typescript-eslint/promise-function-async
   finally (onfinally?: (() => void | PromiseLike<void>) | undefined | null): ICancelable<TReturn> {
     if (typeof onfinally !== 'function') {
       return this
@@ -176,9 +174,7 @@ class AbstractCancelable <TReturn> extends Promise<TReturn> {
         }
         if (isPromiseLike(res)) {
           return res.then(
-            // @ts-ignore
             async () => Promise.reject(error),
-            // @ts-ignore
             async () => Promise.reject(error)
           )
         }
@@ -261,7 +257,6 @@ class CancelableWrap <T, TResult1, TResult2 = never> extends AbstractCancelable<
 
 export type TCancelable<TReturn = any, TScope = undefined, T = any> = (this: TScope, child: <TChild> (cancelable: ICancelable<TChild>) => ICancelable<TChild>) => IterableIterator<T | TReturn>
 
-// eslint-disable-next-line @typescript-eslint/promise-function-async
 export function cancelable <TReturn = any, TScope = undefined, T = any> (generator: TCancelable<TReturn, TScope, T>, scope?: TScope, name?: string): ICancelable<TReturn> {
   return new Cancelable(generator, scope, name)
 }
@@ -271,7 +266,6 @@ class Cancelable <TReturn = any, TScope = undefined, T = any> extends AbstractCa
     super(name)
     let iter: IterableIterator<any>
     try {
-      // eslint-disable-next-line @typescript-eslint/promise-function-async
       iter = generator.call(scope, (child: ICancelable): ICancelable => {
         if (this._done !== TDone.not) {
           // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -291,7 +285,6 @@ class Cancelable <TReturn = any, TScope = undefined, T = any> extends AbstractCa
     const process = (next: any): void => {
       while (true) {
         if (this._done !== TDone.not) return
-        // @ts-ignore TS2314
         let data: IteratorResult<T, TReturn>
         try {
           data = iter.next(next)
@@ -318,18 +311,15 @@ class Cancelable <TReturn = any, TScope = undefined, T = any> extends AbstractCa
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/promise-function-async
 export function abortCancelable <T> (template: (signal: AbortSignal) => Promise<T>, name?: string): ICancelable<T> {
   const controller = new AbortController()
   return new SplitCancelable({
-    // eslint-disable-next-line @typescript-eslint/require-await
     cancel: async (): Promise<void> => controller.abort(),
     promise: template(controller.signal),
     name
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/promise-function-async
 export function splitCancelable <T> (split: ISplitCancelable<T>): ICancelable<T> {
   return new SplitCancelable(split)
 }

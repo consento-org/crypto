@@ -1,31 +1,30 @@
 import randomBytes from '@consento/sync-randombytes'
 import { Buffer } from 'buffer'
-import { IEncryptedMessage, IAnnonymousKeys, IEncodable } from '../types'
+import { IEncryptedMessage, IEncodable, IRawKeys } from '../types'
 import { cores } from '../cores'
 
-cores.forEach(({ name, crypto }) => {
-  /* eslint @typescript-eslint/promise-function-async: "off" */
-  const independentVerifyMessage = (channelId: Uint8Array, message: IEncryptedMessage): Promise<boolean> => {
-    return crypto.verify(channelId, message.signature, message.body)
+for (const { name, crypto } of cores) {
+  const independentVerifyMessage = async (verifyKey: Uint8Array, message: IEncryptedMessage): Promise<boolean> => {
+    return await crypto.verify(verifyKey, message.signature, message.body)
   }
 
-  const senderEncryptMessage = async (annonymous: IAnnonymousKeys, channelWriteKey: Uint8Array, message: any): Promise<IEncryptedMessage> => {
-    return crypto.encryptMessage(annonymous.read, annonymous.write, channelWriteKey, message)
+  const senderEncryptMessage = async (annonymous: IRawKeys, encryptKeys: IRawKeys, message: any): Promise<IEncryptedMessage> => {
+    return await crypto.encryptMessage(annonymous.privateKey, encryptKeys.publicKey, message)
   }
 
-  const receiverDecryptMessage = async (annonymous: IAnnonymousKeys, channelReadKey: Uint8Array, message: IEncryptedMessage): Promise<IEncodable> => {
-    return crypto.decryptMessage(annonymous.read, annonymous.write, channelReadKey, message)
+  const receiverDecryptMessage = async (annonymous: IRawKeys, encryptKeys: IRawKeys, message: IEncryptedMessage): Promise<IEncodable> => {
+    return await crypto.decryptMessage(annonymous.publicKey, encryptKeys.publicKey, encryptKeys.privateKey, message)
   }
 
   const testMessage = async (message: any): Promise<void> => {
-    const channelKeys = await crypto.createKeys()
-    const annonymous = await crypto.deriveAnnonymousKeys(channelKeys.read)
+    const encryptKeys = await crypto.createEncryptionKeys()
+    const signKeys = await crypto.createSignKeys()
     // You need the write key and annonymous keys in order to send a message
-    const encrypted = await senderEncryptMessage(annonymous, channelKeys.write, message)
+    const encrypted = await senderEncryptMessage(signKeys, encryptKeys, message)
     // You need only the channelId aka. annonymous.read key in order to verify a message
-    expect(await independentVerifyMessage(annonymous.read, encrypted)).toBeTruthy()// 'verified.')
+    expect(await independentVerifyMessage(signKeys.publicKey, encrypted)).toBeTruthy()// 'verified.')
     // You need the read key and annonymous keys in order to receive a message
-    const result = await receiverDecryptMessage(annonymous, channelKeys.read, encrypted)
+    const result = await receiverDecryptMessage(signKeys, encryptKeys, encrypted)
     expect(result)
       .toEqual({
         body: message
@@ -44,4 +43,4 @@ cores.forEach(({ name, crypto }) => {
     it('randomBytes', testMessage.bind(null, randomBytes(new Uint8Array(19))))
     it('null', testMessage.bind(null, null))
   })
-})
+}

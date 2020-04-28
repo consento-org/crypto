@@ -7,32 +7,27 @@ import {
 } from '../util/buffer'
 
 import {
-  ICryptoCore, IAnnonymousKeys, IEncryptedMessage, IDecryption, IKeys
+  ICryptoCore, IEncryptedMessage, IDecryption, EDecryptionError, IRawKeys
 } from './types'
 
 /* eslint @typescript-eslint/camelcase: "off" */
 const {
-  crypto_kdf_derive_from_key,
   randombytes_buf,
   crypto_scalarmult_base,
   crypto_scalarmult,
-  crypto_scalarmult_ed25519_BYTES,
-  crypto_kdf_BYTES_MAX,
+  crypto_scalarmult_BYTES,
   crypto_kdf_CONTEXTBYTES,
+  crypto_box_seal,
+  crypto_box_seal_open,
+  crypto_box_keypair,
   crypto_box_SEALBYTES,
   crypto_box_SECRETKEYBYTES,
   crypto_box_PUBLICKEYBYTES,
   crypto_sign_PUBLICKEYBYTES,
   crypto_sign_SECRETKEYBYTES,
   crypto_sign_BYTES,
-  crypto_sign_ed25519_sk_to_curve25519,
-  crypto_sign_ed25519_pk_to_curve25519,
-  crypto_sign_seed_keypair,
   crypto_sign_detached,
   crypto_sign_verify_detached,
-  crypto_sign_ed25519_sk_to_pk,
-  crypto_box_seal,
-  crypto_box_seal_open,
   crypto_sign_keypair,
   crypto_secretbox_easy,
   crypto_secretbox_open_easy,
@@ -62,32 +57,6 @@ if (deriveContext.length !== crypto_kdf_CONTEXTBYTES) {
   throw new Error(`sodium context bytesize changed, we are in trouble! ${deriveContext.length} != ${crypto_kdf_CONTEXTBYTES}`)
 }
 
-function boxSecretFromSignSecret (signSecretKey: Uint8Array): Uint8Array {
-  const encryptSecretKey = sodium_malloc(crypto_box_SECRETKEYBYTES)
-  crypto_sign_ed25519_sk_to_curve25519(encryptSecretKey, signSecretKey)
-  return encryptSecretKey
-}
-
-function boxPublicFromSignPublic (signPublicKey: Uint8Array): Uint8Array {
-  const encryptPublicKey = sodium_malloc(crypto_box_PUBLICKEYBYTES)
-  crypto_sign_ed25519_pk_to_curve25519(encryptPublicKey, signPublicKey)
-  return encryptPublicKey
-}
-
-function decrypt (encryptPublicKey: Uint8Array, encryptSecretKey: Uint8Array, messageEncrypted: Uint8Array): Uint8Array {
-  const messageDecrypted = sodium_malloc(messageEncrypted.length - crypto_box_SEALBYTES)
-  const successful = crypto_box_seal_open(messageDecrypted, messageEncrypted, encryptPublicKey, encryptSecretKey)
-  if (!successful) {
-    return null
-  }
-  return messageDecrypted
-}
-
-function encrypt (encryptPublicKey: Uint8Array, message: Uint8Array): Uint8Array {
-  const messageEncrypted = sodium_malloc(message.length + crypto_box_SEALBYTES)
-  crypto_box_seal(messageEncrypted, message, encryptPublicKey)
-  return messageEncrypted
-}
 function sign (signSecretKey: Uint8Array, body: Uint8Array): Uint8Array {
   const signature = sodium_malloc(crypto_sign_BYTES)
   crypto_sign_detached(signature, body, signSecretKey)
@@ -99,30 +68,11 @@ function verify (signPublicKey: Uint8Array, signature: Uint8Array, body: Uint8Ar
 
 export const friends: ICryptoCore = {
   /* eslint @typescript-eslint/require-await: "off" */
-  async deriveKdfKey (key: Uint8Array) {
-    const derivedKey = sodium_malloc(crypto_kdf_BYTES_MAX)
-    crypto_kdf_derive_from_key(derivedKey, 1, deriveContext, key)
-    return derivedKey
-  },
   async sign (signSecretKey: Uint8Array, body: Uint8Array) {
     return sign(signSecretKey, body)
   },
   async verify (signPublicKey: Uint8Array, signature: Uint8Array, body: Uint8Array): Promise<boolean> {
     return verify(signPublicKey, signature, body)
-  },
-  async deriveAnnonymousKeys (readKey: Uint8Array) {
-    const sign: IAnnonymousKeys = {
-      annonymous: true,
-      read: sodium_malloc(crypto_sign_PUBLICKEYBYTES),
-      write: sodium_malloc(crypto_sign_SECRETKEYBYTES)
-    }
-    crypto_sign_seed_keypair(sign.read, sign.write, readKey)
-    return sign
-  },
-  async deriveReadKey (writeKey: Uint8Array) {
-    const readKey = sodium_malloc(crypto_sign_PUBLICKEYBYTES)
-    crypto_sign_ed25519_sk_to_pk(readKey, writeKey)
-    return readKey
   },
   async createSecretKey () {
     return randomBuffer(crypto_secretbox_KEYBYTES)
@@ -143,58 +93,57 @@ export const friends: ICryptoCore = {
     }
     return bufferToAny(decrypted)
   },
-  async decryptMessage (signReadKey: Uint8Array, signWriteKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage): Promise<IDecryption> {
-    if (!verify(signReadKey, message.signature, message.body)) {
+  async decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage): Promise<IDecryption> {
+    if (!verify(verifyKey, message.signature, message.body)) {
       return {
-        error: 'invalid-channel'
+        error: EDecryptionError.invalidSignature
       }
     }
-    const encryptPublicKey = boxPublicFromSignPublic(signReadKey)
-    const encryptSecretKey = boxSecretFromSignSecret(signWriteKey)
-    const decrypted = decrypt(encryptPublicKey, encryptSecretKey, message.body)
-    if (decrypted === null) {
+    const messageDecrypted = sodium_malloc(message.body.length - crypto_box_SEALBYTES)
+    const successful = crypto_box_seal_open(messageDecrypted, message.body, writeKey, readKey)
+    if (!successful) {
       return {
-        error: 'invalid-encryption'
-      }
-    }
-    const [signature, body] = split(decrypted, crypto_sign_BYTES)
-    if (!verify(readKey, signature, body)) {
-      return {
-        error: 'invalid-owner'
+        error: EDecryptionError.invalidEncryption
       }
     }
     return {
-      body: bufferToAny(body)
+      body: bufferToAny(messageDecrypted)
     }
   },
-  async encryptMessage (annonymousReadKey: Uint8Array, annonymousWriteKey: Uint8Array, writeKey: Uint8Array, message: IEncodable) {
+  async encryptMessage (signKey: Uint8Array, writeKey: Uint8Array, message: IEncodable) {
     const msgBuffer = anyToBuffer(message)
-    const signedStandardized = sign(writeKey, msgBuffer)
-    const secret = Buffer.concat([signedStandardized, msgBuffer])
-    const encryptPublicKey = boxPublicFromSignPublic(annonymousReadKey)
-    const body = encrypt(encryptPublicKey, secret)
+    const body = sodium_malloc(msgBuffer.length + crypto_box_SEALBYTES)
+    crypto_box_seal(body, msgBuffer, writeKey)
     return {
-      signature: sign(annonymousWriteKey, body),
+      signature: sign(signKey, body),
       body
     }
   },
-  async initHandshake (): Promise<IKeys> {
-    const pri = randomBuffer(crypto_scalarmult_ed25519_BYTES)
-    const pub = sodium_malloc(crypto_scalarmult_ed25519_BYTES)
-    crypto_scalarmult_base(pub, pri)
-    return { write: pri, read: pub }
+  async initHandshake (): Promise<IRawKeys> {
+    const privateKey = randomBuffer(crypto_scalarmult_BYTES)
+    const publicKey = sodium_malloc(crypto_scalarmult_BYTES)
+    crypto_scalarmult_base(publicKey, privateKey)
+    return { privateKey, publicKey }
   },
-  async computeSecret (pri: Uint8Array, remotePublic: Uint8Array): Promise<Uint8Array> {
-    const secret = sodium_malloc(crypto_scalarmult_ed25519_BYTES)
-    crypto_scalarmult(secret, pri, remotePublic)
+  async computeSecret (privateKey: Uint8Array, remotePublic: Uint8Array): Promise<Uint8Array> {
+    const secret = sodium_malloc(crypto_scalarmult_BYTES)
+    crypto_scalarmult(secret, privateKey, remotePublic)
     return secret
   },
-  async createKeys (): Promise<IKeys> {
+  async createEncryptionKeys (): Promise<IRawKeys> {
     const keys = {
-      read: sodium_malloc(crypto_sign_PUBLICKEYBYTES),
-      write: sodium_malloc(crypto_sign_SECRETKEYBYTES)
+      publicKey: sodium_malloc(crypto_box_PUBLICKEYBYTES),
+      privateKey: sodium_malloc(crypto_box_SECRETKEYBYTES)
     }
-    crypto_sign_keypair(keys.read, keys.write)
+    crypto_box_keypair(keys.publicKey, keys.privateKey)
+    return keys
+  },
+  async createSignKeys (): Promise<IRawKeys> {
+    const keys = {
+      publicKey: sodium_malloc(crypto_sign_PUBLICKEYBYTES),
+      privateKey: sodium_malloc(crypto_sign_SECRETKEYBYTES)
+    }
+    crypto_sign_keypair(keys.publicKey, keys.privateKey)
     return keys
   }
 }
