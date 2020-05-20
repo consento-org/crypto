@@ -12,10 +12,12 @@ import {
 
 /* eslint @typescript-eslint/camelcase: "off" */
 const {
+  crypto_kdf_derive_from_key,
   randombytes_buf,
   crypto_scalarmult_base,
   crypto_scalarmult,
   crypto_scalarmult_BYTES,
+  crypto_kdf_BYTES_MAX,
   crypto_kdf_CONTEXTBYTES,
   crypto_box_seal,
   crypto_box_seal_open,
@@ -76,6 +78,11 @@ export const friends: ICryptoCore = {
   },
   async createSecretKey () {
     return randomBuffer(crypto_secretbox_KEYBYTES)
+  },
+  async deriveKdfKey (key: Uint8Array, index: number = 1) {
+    const derivedKey = sodium_malloc(crypto_kdf_BYTES_MAX)
+    crypto_kdf_derive_from_key(derivedKey, index, deriveContext, key)
+    return derivedKey
   },
   async encrypt (secretKey: Uint8Array, body: IEncodable): Promise<Uint8Array> {
     const nonce = randomBuffer(crypto_secretbox_NONCEBYTES)

@@ -165,3 +165,24 @@ export interface ICryptoHandshake {
 }
 
 export type IConsentoCrypto = ICryptoPrimitives & ICryptoHandshake
+
+export interface IEncryptedBlob {
+  secretKey: Uint8Array
+  size?: number
+  path: string[]
+  toJSON (): IEncryptedBlobJSON
+}
+
+export interface IEncryptedBlobJSON {
+  secretKey: string
+  size?: number
+  path: string[]
+}
+
+export interface IEncryptedBlobAPI {
+  encryptBlob (encodable: IEncodable): Promise<{ blob: IEncryptedBlob, encrypted: Uint8Array }>
+  decryptBlob (secretKey: Uint8Array, encrypted: Uint8Array): Promise<IEncodable>
+  isEncryptedBlob (input: any): input is IEncryptedBlob
+  toEncryptedBlob (secretKey: string | Uint8Array): Promise<IEncryptedBlob>
+  toEncryptedBlob (blob: IEncryptedBlob | IEncryptedBlobJSON): IEncryptedBlob
+}

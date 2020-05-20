@@ -37,12 +37,19 @@ async function sign (signSecretKey: Uint8Array, body: Uint8Array): Promise<Uint8
   const { crypto_sign_detached } = await libsodium
   return crypto_sign_detached(assertUint8(body), assertUint8(signSecretKey))
 }
+
 async function verify (signPublicKey: Uint8Array, signature: Uint8Array, body: Uint8Array): Promise<boolean> {
   const { crypto_sign_verify_detached } = await libsodium
   return crypto_sign_verify_detached(assertUint8(signature), assertUint8(body), assertUint8(signPublicKey))
 }
 
+const deriveContext = 'conotify'
+
 export const sodium: ICryptoCore = {
+  async deriveKdfKey (key: Uint8Array, index: number = 1) {
+    const { crypto_kdf_derive_from_key, crypto_kdf_BYTES_MAX } = await libsodium
+    return crypto_kdf_derive_from_key(crypto_kdf_BYTES_MAX, index, deriveContext, assertUint8(key))
+  },
   sign,
   verify,
   async decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage): Promise<IDecryption> {

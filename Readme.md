@@ -174,6 +174,45 @@ Now **A**lice and **B**ob have each two channels: one to send data to, one to re
 (await aliceToBobReceiver.decrypt(await bobToAliceSender.encrypt('Hello Alice!'))).body // Hello Alice!
 ```
 
+## Blob Support
+
+The crypto api also provides primitives for working with encrypted blobs:
+
+```javascript
+const { encryptBlob, decryptBlob, isEncryptedBlob } = setup(sodium)
+
+const {
+  blob, // Information about a blob: to pass around
+  encrypted // Encrypted data to be stored
+} = await encryptBlob('Hello Secret!')
+blob.path // Path at which to store the encrypted data
+blob.secretKey // Secretkey to decrypt this data
+blob.size // Number of bytes of the encrypted blob (only available after encryption)
+
+isEncryptedBlob(blob) // To verify if a set of data is a blob
+
+const decrypted = await decryptBlob(blob.secretKey, encrypted)
+```
+
+Blob information is serializable with `toJSON` and deserializable using `toEncryptedBlob`.
+
+```javascript
+const { encryptBlob, decryptBlob, toEncryptedBlob } = setup(sodium)
+
+const { blob } = await encryptBlob('Hello Secret!')
+const blobJSON = blob.toJSON()
+const sameBlob = toEncryptedBlob(blobJSON)
+```
+
+It is possible to restore a blob from it's `secretKey` but that requires async computation:
+
+```javascript
+const { encryptBlob, decryptBlob, toEncryptedBlob } = setup(sodium)
+
+const { blob } = await encryptBlob('Hello Secret!')
+const sameBlob = await toEncryptedBlob(blob.secretKey)
+```
+
 ## License
 
 [MIT](./LICENSE)

@@ -2,13 +2,16 @@ import { ICryptoCore } from './core/types'
 import { IConsentoCrypto } from './types'
 import { setupPrimitives } from './primitives'
 import { setupHandshake } from './handshake'
+import { setupBlob } from './blob'
 
 export function create (crypto: ICryptoCore): IConsentoCrypto {
   const primitives = setupPrimitives(crypto)
   const handshake = setupHandshake(crypto, primitives)
+  const blob = setupBlob(crypto)
   return {
     ...primitives,
-    ...handshake
+    ...handshake,
+    ...blob
   }
 }
 

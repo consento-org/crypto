@@ -23,6 +23,7 @@ export interface IDecryption {
 }
 
 export interface ICryptoCore {
+  deriveKdfKey (key: Uint8Array, index?: number): Promise<Uint8Array>
   sign (signSecretKey: Uint8Array, body: Uint8Array): Promise<Uint8Array>
   verify (signPublicKey: Uint8Array, signature: Uint8Array, body: Uint8Array): Promise<boolean>
   decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage): Promise<IDecryption>
