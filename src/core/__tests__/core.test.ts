@@ -2,6 +2,7 @@ import randomBytes from '@consento/sync-randombytes'
 import { Buffer } from 'buffer'
 import { IEncryptedMessage, IEncodable, IRawKeys } from '../types'
 import { cores } from '../cores'
+import { bufferToString } from '../../util/buffer'
 
 for (const { name, crypto } of cores) {
   const independentVerifyMessage = async (verifyKey: Uint8Array, message: IEncryptedMessage): Promise<boolean> => {
@@ -42,5 +43,16 @@ for (const { name, crypto } of cores) {
     it('uint8array', testMessage.bind(null, new Uint8Array([62, 63, 64, 65])))
     it('randomBytes', testMessage.bind(null, randomBytes(new Uint8Array(19))))
     it('null', testMessage.bind(null, null))
+  })
+
+  describe(`${name} deriving keys`, () => {
+    it('basic functionality', async () => {
+      const key = await crypto.createSecretKey()
+      const [derivedKey, derivedKey2] = await Promise.all([
+        crypto.deriveKdfKey(key),
+        crypto.deriveKdfKey(key)
+      ])
+      expect(bufferToString(derivedKey, 'base64')).toBe(bufferToString(derivedKey2, 'base64'))
+    })
   })
 }
