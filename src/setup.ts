@@ -18,6 +18,9 @@ export function create (crypto: ICryptoCore): IConsentoCrypto {
 const cache = new WeakMap<ICryptoCore, any>([])
 
 export function setup (crypto: ICryptoCore): IConsentoCrypto {
+  if (crypto === null || crypto === undefined) {
+    throw new Error('No crypto library specified.')
+  }
   if (cache.has(crypto)) {
     return cache.get(crypto)
   }
