@@ -41,10 +41,10 @@
   "dependencies": {
     "@consento/libsodium-wrappers-sumo": "^0.7.7",
     "buffer": "^5.6.0",
+    "get-random-values-polypony": "^1.0.0",
     "sodium-universal": "^2.0.0"
   },
   "devDependencies": {
-    "@consento/sync-randombytes": "^1.0.5",
     "@leichtgewicht/pack-ts": "^1.0.1",
     "@types/jest": "^25.2.1",
     "@types/libsodium-wrappers-sumo": "^0.7.3",

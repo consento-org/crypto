@@ -1,4 +1,4 @@
-import randomBytes from '@consento/sync-randombytes'
+import randomBytes from 'get-random-values-polypony'
 import { Buffer } from 'buffer'
 import { IEncryptedMessage, IEncodable, IRawKeys } from '../types'
 import { cores } from '../cores'
