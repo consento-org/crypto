@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import * as sodium from 'sodium-universal'
 import {
   anyToBuffer,
@@ -10,7 +11,6 @@ import {
   ICryptoCore, IEncryptedMessage, IDecryption, EDecryptionError, IRawKeys
 } from './types'
 
-/* eslint @typescript-eslint/camelcase: "off" */
 const {
   crypto_kdf_derive_from_key,
   randombytes_buf,

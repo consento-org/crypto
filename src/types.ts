@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/method-signature-style */
 import { IEncryptedMessage, IDecryption } from './core/types'
 import { IEncodable, IStringOrBuffer } from './util/buffer'
 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/method-signature-style */
 export interface IExtPromise<T> extends Promise<T> {
   _resolve (data: T): void
   _reject (error: Error): void

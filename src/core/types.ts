@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/method-signature-style */
 import { IEncodable } from '../util/buffer'
 
 export { IEncodable } from '../util/buffer'

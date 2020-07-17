@@ -43,7 +43,7 @@ function newBlob (secretKey: Uint8Array, path: string[], size?: number): IEncryp
         size
       }
     },
-    // @ts-ignore
+    // @ts-expect-error
     toString () {
       return `[EncryptedBlob#${bufferToString(secretKey, 'hex')}@${path.join('/')}]`
     }
