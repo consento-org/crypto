@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-throw-literal */
 // ↑ https://github.com/typescript-eslint/typescript-eslint/issues/1841
 import { ICryptoCore } from '../core/types'
-import { Buffer, toBuffer, bufferToString, IEncodable } from '../util/buffer'
-import { ICryptoHandshake, IHandshakeInit, IReceiver, ICryptoPrimitives, IHandshakeInitOptions, IHandshakeAccept, ISender, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
+import { Buffer, toBuffer, bufferToString } from '../util/buffer'
+import { ICryptoHandshake, IHandshakeInit, IReceiver, ICryptoPrimitives, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
 import { isReceiver } from '../util/isReceiver'
-import { cancelable, ICancelable } from '../util/cancelable'
+import { checkpoint } from '../util/abort'
 
 export const HANDSHAKE_MSG_VERSION = Buffer.from([1])
 
@@ -44,29 +44,26 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
       }
     }
 
-    // eslint-disable-next-line @typescript-eslint/promise-function-async
-    confirm (accept: IHandshakeAcceptMessage): ICancelable<IHandshakeConfirmation> {
-      // eslint-disable-next-line @typescript-eslint/return-await
-      return cancelable<IHandshakeConfirmation, HandshakeInit>(function * () {
-        const secretKey = (yield crypto.computeSecret(this.handshakeSecret, Buffer.from(accept.token, 'base64'))) as Uint8Array
-        const bob = (yield createReceiver()) as IReceiver
-        const sendKey = (yield crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64'))) as IEncodable
-        if (!(sendKey instanceof Uint8Array)) {
-          throw Object.assign(new Error('Expected buffer in decrypted message'), { code: 'invalid-message' })
-        }
-        const aliceSender = (yield new Sender({ sendKey })) as ISender
-        return yield new HandshakeConfirmation({
-          connection: new Connection({
-            sender: aliceSender,
-            receiver: bob.receiver
-          }),
-          // In case you are wondering why we not just simply return "bob" as sender
-          // but instead pass it in two messages: the reason is that without this step
-          // the API is clearer.
-          // TODO: rethink
-          finalMessage: bob.sender.sendKey
-        })
-      }, this)
+    async confirm (accept: IHandshakeAcceptMessage, { signal }: { signal?: AbortSignal } = {}): Promise<IHandshakeConfirmation> {
+      const cp = checkpoint(signal)
+      const secretKey = await cp(crypto.computeSecret(this.handshakeSecret, Buffer.from(accept.token, 'base64')))
+      const bob = await cp(createReceiver())
+      const sendKey = await cp(crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64')))
+      if (!(sendKey instanceof Uint8Array)) {
+        throw Object.assign(new Error('Expected buffer in decrypted message'), { code: 'invalid-message' })
+      }
+      const aliceSender = new Sender({ sendKey })
+      return new HandshakeConfirmation({
+        connection: new Connection({
+          sender: aliceSender,
+          receiver: bob.receiver
+        }),
+        // In case you are wondering why we not just simply return "bob" as sender
+        // but instead pass it in two messages: the reason is that without this step
+        // the API is clearer.
+        // TODO: rethink
+        finalMessage: bob.sender.sendKey
+      })
     }
   }
 
@@ -111,9 +108,10 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
   }
 
   return {
-    async initHandshake (): Promise<HandshakeInit> {
-      const { receiver, sender } = await createReceiver()
-      const { privateKey: handshakeSecret, publicKey: handshakePublic } = await crypto.initHandshake()
+    async initHandshake ({ signal }: { signal?: AbortSignal } = {}): Promise<HandshakeInit> {
+      const cp = checkpoint(signal)
+      const { receiver, sender } = await cp(createReceiver())
+      const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
       return new HandshakeInit({
         receiver,
         handshakeSecret,
@@ -124,15 +122,15 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
         ])
       })
     },
-    // eslint-disable-next-line @typescript-eslint/require-await
-    async acceptHandshake (firstMessage: Uint8Array): Promise<IHandshakeAccept> {
+    async acceptHandshake (firstMessage: Uint8Array, { signal }: { signal?: AbortSignal } = {}): Promise<IHandshakeAccept> {
       const {
         token,
         sendKey
       } = processHandshake(firstMessage)
-      const { privateKey: handshakeSecret, publicKey: handshakePublic } = await crypto.initHandshake()
-      const secretKey = await crypto.computeSecret(handshakeSecret, token)
-      const { receiver, sender } = await createReceiver()
+      const cp = checkpoint(signal)
+      const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
+      const secretKey = await cp(crypto.computeSecret(handshakeSecret, token))
+      const { receiver, sender } = await cp(createReceiver())
       return new HandshakeAccept({
         sender: new Sender({ sendKey }),
         receiver,

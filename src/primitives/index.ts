@@ -10,7 +10,6 @@ import {
   IReceiverJSON
 } from '../types'
 
-import { ICancelable, cancelable } from '../util/cancelable'
 import { Buffer, bufferToString, bufferCompare, toBuffer, IEncodable } from '../util/buffer'
 import { isReceiver } from '../util/isReceiver'
 import { isSender } from '../util/isSender'
@@ -189,17 +188,8 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
       return await crypto.sign(this.signKey, data)
     }
 
-    // eslint-disable-next-line @typescript-eslint/promise-function-async
-    encrypt (message: IEncodable): ICancelable<IEncryptedMessage> {
-      // eslint-disable-next-line @typescript-eslint/return-await
-      return cancelable<IEncryptedMessage, Sender>(function * () {
-        // eslint-disable-next-line @typescript-eslint/return-await
-        return yield crypto.encryptMessage(
-          this.signKey,
-          this.encryptKey,
-          message
-        )
-      }, this)
+    encrypt (message: IEncodable): Promise<IEncryptedMessage> {
+      return crypto.encryptMessage(this.signKey, this.encryptKey, message)
     }
   }
 
@@ -275,17 +265,13 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
       return `Receiver[receiveKey=${this.receiveKeyBase64}]`
     }
 
-    // eslint-disable-next-line @typescript-eslint/promise-function-async
-    decrypt (encrypted: IEncryptedMessage): ICancelable<IDecryption> {
-      // eslint-disable-next-line @typescript-eslint/return-await
-      return cancelable<IDecryption, Receiver>(function * () {
-        return yield crypto.decryptMessage(
-          this.annonymous.id,
-          this.sender.encryptKey,
-          this.decryptKey,
-          encrypted
-        )
-      }, this)
+    async decrypt (encrypted: IEncryptedMessage): Promise<IDecryption> {
+      return crypto.decryptMessage(
+        this.annonymous.id,
+        this.sender.encryptKey,
+        this.decryptKey,
+        encrypted
+      )
     }
   }
 

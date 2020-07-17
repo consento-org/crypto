@@ -1,8 +1,7 @@
 import { IEncryptedMessage, IDecryption } from './core/types'
 import { IEncodable, IStringOrBuffer } from './util/buffer'
-import { ICancelable } from './util/cancelable'
 
-export { ICancelable, ISplitCancelable, TCancelable } from './util/cancelable'
+export { AbortError, TCheckPoint } from './util/abort'
 
 export { IEncryptedMessage, IDecryption, IEncodable }
 
@@ -54,7 +53,7 @@ export interface ISender extends IComparable<ISender>, IChannelId {
   readonly sender: this
   readonly annonymous: IAnnonymous
   sign(data: Uint8Array): Promise<Uint8Array>
-  encrypt(message: IEncodable): ICancelable<IEncryptedMessage>
+  encrypt(message: IEncodable, opts?: { signal?: AbortSignal }): Promise<IEncryptedMessage>
 }
 
 export interface IReceiverJSON {
@@ -74,7 +73,7 @@ export interface IReceiver extends IComparable<IReceiver>, IChannelId {
   readonly sender: ISender
   readonly annonymous: IAnnonymous
   toJSON(): IReceiverJSON
-  decrypt(encrypted: IEncryptedMessage): ICancelable<IDecryption>
+  decrypt(encrypted: IEncryptedMessage, opts?: { signal?: AbortSignal }): Promise<IDecryption>
 }
 
 export interface IConnectionJSON {
@@ -110,7 +109,7 @@ export interface IHandshakeInit {
   firstMessage: Uint8Array
   handshakeSecret: Uint8Array
   toJSON(): IHandshakeInitJSON
-  confirm(acceptMessage: IHandshakeAcceptMessage): ICancelable<IHandshakeConfirmation>
+  confirm(acceptMessage: IHandshakeAcceptMessage, opts?: { signal?: AbortSignal }): Promise<IHandshakeConfirmation>
 }
 
 export interface IHandshakeAcceptMessage {
