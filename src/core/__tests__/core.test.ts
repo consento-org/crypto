@@ -1,8 +1,17 @@
 import randomBytes from 'get-random-values-polypony'
-import { Buffer } from 'buffer'
 import { IEncryptedMessage, IEncodable, IRawKeys } from '../types'
 import { cores } from '../cores'
+import { Buffer } from 'buffer'
 import { bufferToString } from '../../util/buffer'
+
+describe('buffer test for jest compatibility', () => {
+  const a = Buffer.from('abcd')
+  const b = new Uint8Array([1])
+  const c = Buffer.concat([a, b])
+  expect(a instanceof Uint8Array).toBeTruthy()
+  expect(b instanceof Uint8Array).toBeTruthy()
+  expect(c instanceof Uint8Array).toBeTruthy()
+})
 
 for (const { name, crypto } of cores) {
   const independentVerifyMessage = async (verifyKey: Uint8Array, message: IEncryptedMessage): Promise<boolean> => {

@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "ci": "npm run lint && npm run test -- --no-watchman",
-    "test": "jest",
+    "test": "jest --env=node",
     "build-ts": "tsc",
     "watch-ts": "tsc -w",
     "pack": "pack-ts",
@@ -42,11 +42,11 @@
     "@consento/libsodium-wrappers-sumo": "^0.7.7",
     "buffer": "^5.6.0",
     "get-random-values-polypony": "^1.0.0",
-    "sodium-universal": "^2.0.0"
+    "sodium-universal": "^3.0.1"
   },
   "devDependencies": {
     "@leichtgewicht/pack-ts": "^1.0.1",
-    "@types/jest": "^25.2.1",
+    "@types/jest": "^26.0.4",
     "@types/libsodium-wrappers-sumo": "^0.7.3",
     "@typescript-eslint/eslint-plugin": "^3.6.1",
     "eslint": "^7.4.0",
@@ -55,9 +55,9 @@
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
-    "jest": "^25.4.0",
-    "ts-jest": "^25.4.0",
-    "typescript": "^3.8.3"
+    "jest": "^26.1.0",
+    "ts-jest": "^26.1.3",
+    "typescript": "^3.9.7"
   },
   "repository": {
     "type": "git",
