@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as sodium from 'sodium-universal'
+import { Buffer } from 'buffer'
 import {
   anyToBuffer,
-  bufferToAny,
   IEncodable,
-  Buffer
+  bufferToAny
 } from '../util/buffer'
 
 import {
@@ -39,7 +39,7 @@ const {
   sodium_malloc
 } = sodium.default
 
-function randomBuffer (size: number): Buffer {
+function randomBuffer (size: number): Uint8Array {
   const buffer = sodium_malloc(size)
   randombytes_buf(buffer)
   return buffer

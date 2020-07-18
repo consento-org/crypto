@@ -1,11 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import _libsodium from '@consento/libsodium-wrappers-sumo'
-
+import { Buffer } from 'buffer'
 import {
   anyToBuffer,
   bufferToAny,
-  IEncodable,
-  Buffer
+  IEncodable
 } from '../util/buffer'
 
 import {
@@ -26,8 +25,8 @@ function split (buffer: Uint8Array, offset: number): Uint8Array[] {
   ]
 }
 
-function assertUint8 (input: Uint8Array | Buffer): Uint8Array {
-  if (!('Buffer' in global) || input instanceof Buffer) {
+function assertUint8 (input: Uint8Array): Uint8Array {
+  if (input instanceof Buffer) {
     return new Uint8Array(input.buffer, input.byteOffset, input.byteLength)
   }
   return input

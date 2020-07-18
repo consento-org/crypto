@@ -1,5 +1,6 @@
 import { ICryptoCore } from '../core/types'
-import { Buffer, toBuffer, bufferToString } from '../util/buffer'
+import { Buffer } from 'buffer'
+import { toBuffer, bufferToString } from '../util/buffer'
 import { ICryptoHandshake, IHandshakeInit, IReceiver, ICryptoPrimitives, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
 import { isReceiver } from '../util/isReceiver'
 import { checkpoint } from '../util/abort'
@@ -48,7 +49,7 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
       const bob = await cp(createReceiver())
       const sendKey = await cp(crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64')))
       if (!(sendKey instanceof Uint8Array)) {
-        throw Object.assign(new Error('Expected buffer in decrypted message'), { code: 'invalid-message' })
+        throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${sendKey.constructor.name}`), { code: 'invalid-message', sendKey })
       }
       const aliceSender = new Sender({ sendKey })
       return new HandshakeConfirmation({

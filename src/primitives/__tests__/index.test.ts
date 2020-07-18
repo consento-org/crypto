@@ -1,6 +1,7 @@
 import { setupPrimitives } from '../'
 import { cores } from '../../core/cores'
-import { bufferToString, Buffer } from '../../util/buffer'
+import { Buffer } from 'buffer'
+import { bufferToString } from '../../util/buffer'
 import { isAnnonymous } from '../../util/isAnnonymous'
 import { isReceiver } from '../../util/isReceiver'
 import { isSender } from '../../util/isSender'

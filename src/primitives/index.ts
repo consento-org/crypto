@@ -9,8 +9,8 @@ import {
   ISenderJSON,
   IReceiverJSON
 } from '../types'
-
-import { Buffer, bufferToString, bufferCompare, toBuffer, IEncodable } from '../util/buffer'
+import { Buffer } from 'buffer'
+import { bufferToString, bufferCompare, toBuffer, IEncodable } from '../util/buffer'
 import { isReceiver } from '../util/isReceiver'
 import { isSender } from '../util/isSender'
 
@@ -188,8 +188,8 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
       return await crypto.sign(this.signKey, data)
     }
 
-    encrypt (message: IEncodable): Promise<IEncryptedMessage> {
-      return crypto.encryptMessage(this.signKey, this.encryptKey, message)
+    async encrypt (message: IEncodable): Promise<IEncryptedMessage> {
+      return await crypto.encryptMessage(this.signKey, this.encryptKey, message)
     }
   }
 
@@ -266,7 +266,7 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
     }
 
     async decrypt (encrypted: IEncryptedMessage): Promise<IDecryption> {
-      return crypto.decryptMessage(
+      return await crypto.decryptMessage(
         this.annonymous.id,
         this.sender.encryptKey,
         this.decryptKey,
