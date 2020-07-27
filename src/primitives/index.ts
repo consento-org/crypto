@@ -9,10 +9,9 @@ import {
   ISenderJSON,
   IReceiverJSON
 } from '../types'
-import { Buffer } from 'buffer'
-import { bufferToString, bufferCompare, toBuffer, IEncodable } from '../util/buffer'
-import { isReceiver } from '../util/isReceiver'
-import { isSender } from '../util/isSender'
+import { Buffer, IEncodable } from '../util/types'
+import { bufferToString, bufferCompare, toBuffer } from '../util/buffer'
+import { isReceiver, isSender } from '..'
 
 const VERIFY_KEY_SIZE = 32
 const VERIFY_KEY_START = 0

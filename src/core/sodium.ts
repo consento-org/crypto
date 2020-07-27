@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import _libsodium from '@consento/libsodium-wrappers-sumo'
-import { Buffer } from 'buffer'
 import {
   anyToBuffer,
-  bufferToAny,
-  IEncodable
+  bufferToAny
 } from '../util/buffer'
-
+import {
+  Buffer,
+  IEncodable
+} from '../util/types'
 import {
   ICryptoCore, IEncryptedMessage, IDecryption, EDecryptionError
 } from './types'

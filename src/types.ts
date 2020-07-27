@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
 import { IEncryptedMessage, IDecryption } from './core/types'
-import { IEncodable, IStringOrBuffer } from './util/buffer'
+import { IEncodable, IStringOrBuffer } from './util/types'
 
-export { AbortError, TCheckPoint } from './util/abort'
+export * from './core/types'
 
-export { IEncryptedMessage, IDecryption, IEncodable }
+export { IEncryptedMessage, IDecryption }
 
 export const receiverFlag = Symbol.for('consento/crypto/receiver')
 export const senderFlag = Symbol.for('consento/crypto/sender')

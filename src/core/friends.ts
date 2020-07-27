@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import * as sodium from 'sodium-universal'
-import { Buffer } from 'buffer'
 import {
   anyToBuffer,
-  IEncodable,
   bufferToAny
 } from '../util/buffer'
-
+import {
+  IEncodable,
+  Buffer
+} from '../util/types'
 import {
   ICryptoCore, IEncryptedMessage, IDecryption, EDecryptionError, IRawKeys
 } from './types'

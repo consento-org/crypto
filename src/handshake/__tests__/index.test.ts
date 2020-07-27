@@ -1,6 +1,7 @@
 import { setup } from '../../setup'
 import { cores } from '../../core/cores'
-import { IReceiver, ISender, IEncryptedMessage, IEncodable, IHandshakeAcceptMessage } from '../../types'
+import { IReceiver, ISender, IEncryptedMessage, IHandshakeAcceptMessage } from '../../types'
+import { IEncodable } from '../../util/types'
 
 const channels: { [key: string]: (msg: IEncryptedMessage) => Promise<void> } = {}
 

@@ -1,10 +1,8 @@
 import { setupPrimitives } from '../'
 import { cores } from '../../core/cores'
-import { Buffer } from 'buffer'
 import { bufferToString } from '../../util/buffer'
-import { isAnnonymous } from '../../util/isAnnonymous'
-import { isReceiver } from '../../util/isReceiver'
-import { isSender } from '../../util/isSender'
+import { Buffer } from '../../util/types'
+import { isAnnonymous, isReceiver, isSender } from '../..'
 
 for (const { name, crypto } of cores) {
   const variant = setupPrimitives(crypto)

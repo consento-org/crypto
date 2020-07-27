@@ -1,5 +1,4 @@
-import { Buffer } from 'buffer'
-export { Buffer } from 'buffer'
+import { IEncodable, IStringOrBuffer, EEncoding, Buffer } from './types'
 
 function enumBuffer (num: number): Uint8Array {
   const buf = new Uint8Array(1)
@@ -22,9 +21,6 @@ export function concatUint8Arrays (arrays: Uint8Array[]): Uint8Array {
   }
   return combined
 }
-
-export type IStringOrBuffer = Uint8Array | string
-export type IEncodable = IStringOrBuffer | object
 
 export function anyToBuffer (message: IEncodable): Uint8Array {
   if (typeof message === 'function') {
@@ -60,8 +56,6 @@ export function bufferCompare (a: Uint8Array, b: Uint8Array): number {
   }
   return 0
 }
-
-export type EEncoding = 'base64' | 'hex' | 'utf8'
 
 export function bufferToString (buffer: Uint8Array, encoding: EEncoding = 'utf8'): string {
   return Buffer.from(buffer).toString(encoding)

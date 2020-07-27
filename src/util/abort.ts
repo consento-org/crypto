@@ -1,11 +1,4 @@
-export class AbortError extends Error {
-  code = 'aborted'
-  constructor () {
-    super('aborted')
-  }
-}
-
-export type TCheckPoint = <T extends Promise<any>> (input: T) => T
+import { TCheckPoint, AbortError } from './types'
 
 export function bubbleAbort (signal?: AbortSignal): void {
   if (signal === undefined || signal === null) {

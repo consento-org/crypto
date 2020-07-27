@@ -1,7 +1,7 @@
 import randomBytes from 'get-random-values-polypony'
-import { IEncryptedMessage, IEncodable, IRawKeys } from '../types'
+import { IEncryptedMessage, IRawKeys } from '../types'
+import { Buffer, IEncodable } from '../../util/types'
 import { cores } from '../cores'
-import { Buffer } from 'buffer'
 import { bufferToString } from '../../util/buffer'
 
 describe('buffer test for jest compatibility', () => {

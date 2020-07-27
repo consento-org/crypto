@@ -1,7 +1,7 @@
 import { ICryptoCore } from '../core/types'
 import { IEncryptedBlobAPI, IEncryptedBlob, IEncryptedBlobJSON } from '../types'
-import { bufferToString, IEncodable } from '../util/buffer'
-import { Buffer } from 'buffer'
+import { bufferToString } from '../util/buffer'
+import { Buffer, IEncodable } from '../util/types'
 
 async function pathForSecretKey (cryptoCore: ICryptoCore, secretKey: Uint8Array): Promise<string[]> {
   const locationKey = await cryptoCore.deriveKdfKey(secretKey)

@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
-import { IEncodable } from '../util/buffer'
-
-export { IEncodable } from '../util/buffer'
+import { IEncodable } from '../util/types'
 
 export interface IEncryptedMessage {
   signature: Uint8Array

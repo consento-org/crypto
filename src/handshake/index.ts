@@ -1,5 +1,5 @@
 import { ICryptoCore } from '../core/types'
-import { Buffer } from 'buffer'
+import { Buffer } from '../util/types'
 import { toBuffer, bufferToString } from '../util/buffer'
 import { ICryptoHandshake, IHandshakeInit, IReceiver, ICryptoPrimitives, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
 import { isReceiver } from '../util/isReceiver'
