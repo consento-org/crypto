@@ -1,7 +1,8 @@
 import { ICryptoCore } from '../core/types'
 import { IEncryptedBlobAPI, IEncryptedBlob, IEncryptedBlobJSON } from '../types'
 import { bufferToString } from '../util/buffer'
-import { Buffer, IEncodable } from '../util/types'
+import { Buffer, IEncodable, ITimeoutOptions } from '../util/types'
+import { wrapTimeout, checkpoint } from '../util/abort'
 
 async function pathForSecretKey (cryptoCore: ICryptoCore, secretKey: Uint8Array): Promise<string[]> {
   const locationKey = await cryptoCore.deriveKdfKey(secretKey)
@@ -72,16 +73,19 @@ export function setupBlob (crypto: ICryptoCore): IEncryptedBlobAPI {
     return input
   }
   return {
-    async encryptBlob (encodable: IEncodable): Promise<{ blob: IEncryptedBlob, encrypted: Uint8Array }> {
-      const secretKey = await crypto.createSecretKey()
-      const path = await pathForSecretKey(crypto, secretKey)
-      const encrypted = await crypto.encrypt(secretKey, encodable)
-      return {
-        blob: newBlob(secretKey, path, encrypted.length),
-        encrypted
-      }
+    async encryptBlob (encodable: IEncodable, opts?: ITimeoutOptions): Promise<{ blob: IEncryptedBlob, encrypted: Uint8Array }> {
+      return await wrapTimeout(async signal => {
+        const cp = checkpoint(signal)
+        const secretKey = await cp(crypto.createSecretKey())
+        const path = await cp(pathForSecretKey(crypto, secretKey))
+        const encrypted = await cp(crypto.encrypt(secretKey, encodable))
+        return {
+          blob: newBlob(secretKey, path, encrypted.length),
+          encrypted
+        }
+      }, opts)
     },
-    async decryptBlob (secretKey: Uint8Array, encrypted: Uint8Array): Promise<IEncodable> {
+    async decryptBlob (secretKey: Uint8Array, encrypted: Uint8Array, _?: ITimeoutOptions): Promise<IEncodable> {
       return await crypto.decrypt(secretKey, encrypted)
     },
     isEncryptedBlob,

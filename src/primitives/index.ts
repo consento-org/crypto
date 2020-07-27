@@ -9,8 +9,8 @@ import {
   ISenderJSON,
   IReceiverJSON
 } from '../types'
-import { Buffer, IEncodable } from '../util/types'
-import { bufferToString, bufferCompare, toBuffer } from '../util/buffer'
+import { Buffer, IEncodable, ITimeoutOptions } from '../util/types'
+import { bufferToString, bufferCompare, toBuffer, wrapTimeout, bubbleAbort } from '../util'
 import { isReceiver, isSender } from '..'
 
 const VERIFY_KEY_SIZE = 32
@@ -291,18 +291,21 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
     }
   }
   return {
-    async createReceiver (): Promise<IReceiver> {
-      const [encrypt, sign] = await Promise.all([
-        crypto.createEncryptionKeys(),
-        crypto.createSignKeys()
-      ])
-      const sendKey = Buffer.concat([sign.publicKey, sign.privateKey, encrypt.publicKey])
-      const receiver = new Receiver({
-        id: sign.publicKey,
-        sendKey,
-        receiveKey: Buffer.concat([sendKey, encrypt.privateKey])
-      })
-      return receiver
+    async createReceiver (opts?: ITimeoutOptions): Promise<IReceiver> {
+      return await wrapTimeout(async signal => {
+        const [encrypt, sign] = await Promise.all([
+          crypto.createEncryptionKeys(),
+          crypto.createSignKeys()
+        ])
+        bubbleAbort(signal)
+        const sendKey = Buffer.concat([sign.publicKey, sign.privateKey, encrypt.publicKey])
+        const receiver = new Receiver({
+          id: sign.publicKey,
+          sendKey,
+          receiveKey: Buffer.concat([sendKey, encrypt.privateKey])
+        })
+        return receiver
+      }, opts)
     },
     Annonymous,
     Receiver,

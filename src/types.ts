@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
 import { IEncryptedMessage, IDecryption } from './core/types'
-import { IEncodable, IStringOrBuffer } from './util/types'
+import { IEncodable, IStringOrBuffer, ITimeoutOptions } from './util/types'
 
 export * from './core/types'
 
@@ -54,7 +54,7 @@ export interface ISender extends IComparable<ISender>, IChannelId {
   readonly sender: this
   readonly annonymous: IAnnonymous
   sign(data: Uint8Array): Promise<Uint8Array>
-  encrypt(message: IEncodable, opts?: { signal?: AbortSignal }): Promise<IEncryptedMessage>
+  encrypt(message: IEncodable): Promise<IEncryptedMessage>
 }
 
 export interface IReceiverJSON {
@@ -74,7 +74,7 @@ export interface IReceiver extends IComparable<IReceiver>, IChannelId {
   readonly sender: ISender
   readonly annonymous: IAnnonymous
   toJSON(): IReceiverJSON
-  decrypt(encrypted: IEncryptedMessage, opts?: { signal?: AbortSignal }): Promise<IDecryption>
+  decrypt(encrypted: IEncryptedMessage): Promise<IDecryption>
 }
 
 export interface IConnectionJSON {
@@ -110,7 +110,7 @@ export interface IHandshakeInit {
   firstMessage: Uint8Array
   handshakeSecret: Uint8Array
   toJSON(): IHandshakeInitJSON
-  confirm(acceptMessage: IHandshakeAcceptMessage, opts?: { signal?: AbortSignal }): Promise<IHandshakeConfirmation>
+  confirm(acceptMessage: IHandshakeAcceptMessage, opts?: ITimeoutOptions): Promise<IHandshakeConfirmation>
 }
 
 export interface IHandshakeAcceptMessage {
@@ -129,7 +129,7 @@ export interface IHandshakeAcceptOptions extends IConnectionOptions {
 export interface IHandshakeAccept extends IConnection {
   acceptMessage: IHandshakeAcceptMessage
   toJSON(): IHandshakeAcceptJSON
-  finalize(message: Uint8Array): Promise<IConnection>
+  finalize(message: Uint8Array, opts?: ITimeoutOptions): Promise<IConnection>
 }
 
 export interface IHandshakeConfirmationOptions {
@@ -149,7 +149,7 @@ export interface IHandshakeConfirmation {
 }
 
 export interface ICryptoPrimitives {
-  createReceiver(): Promise<IReceiver>
+  createReceiver(opts?: ITimeoutOptions): Promise<IReceiver>
   Annonymous: new (opts: IAnnonymousOptions) => IAnnonymous
   Receiver: new (opts: IReceiverOptions) => IReceiver
   Sender: new (opts: ISenderOptions) => ISender
@@ -157,8 +157,8 @@ export interface ICryptoPrimitives {
 }
 
 export interface ICryptoHandshake {
-  initHandshake(): Promise<IHandshakeInit>
-  acceptHandshake(message: Uint8Array): Promise<IHandshakeAccept>
+  initHandshake(opts?: ITimeoutOptions): Promise<IHandshakeInit>
+  acceptHandshake(message: Uint8Array, opts?: ITimeoutOptions): Promise<IHandshakeAccept>
   HandshakeInit: new (opts: IHandshakeInitOptions) => IHandshakeInit
   HandshakeAccept: new (opts: IHandshakeAcceptOptions) => IHandshakeAccept
   HandshakeConfirmation: new (opts: IHandshakeConfirmationOptions) => IHandshakeConfirmation
@@ -180,8 +180,8 @@ export interface IEncryptedBlobJSON {
 }
 
 export interface IEncryptedBlobAPI {
-  encryptBlob (encodable: IEncodable): Promise<{ blob: IEncryptedBlob, encrypted: Uint8Array }>
-  decryptBlob (secretKey: Uint8Array, encrypted: Uint8Array): Promise<IEncodable>
+  encryptBlob (encodable: IEncodable, opts?: ITimeoutOptions): Promise<{ blob: IEncryptedBlob, encrypted: Uint8Array }>
+  decryptBlob (secretKey: Uint8Array, encrypted: Uint8Array, opts?: ITimeoutOptions): Promise<IEncodable>
   isEncryptedBlob (input: any): input is IEncryptedBlob
   toEncryptedBlob (secretKey: string | Uint8Array): Promise<IEncryptedBlob>
   toEncryptedBlob (blob: IEncryptedBlob | IEncryptedBlobJSON): IEncryptedBlob

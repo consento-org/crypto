@@ -1,9 +1,9 @@
 import { ICryptoCore } from '../core/types'
-import { Buffer } from '../util/types'
+import { Buffer, ITimeoutOptions } from '../util/types'
 import { toBuffer, bufferToString } from '../util/buffer'
 import { ICryptoHandshake, IHandshakeInit, IReceiver, ICryptoPrimitives, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
 import { isReceiver } from '../util/isReceiver'
-import { checkpoint } from '../util/abort'
+import { checkpoint, wrapTimeout } from '../util/abort'
 
 export const HANDSHAKE_MSG_VERSION = Buffer.from([1])
 
@@ -43,26 +43,28 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
       }
     }
 
-    async confirm (accept: IHandshakeAcceptMessage, { signal }: { signal?: AbortSignal } = {}): Promise<IHandshakeConfirmation> {
-      const cp = checkpoint(signal)
-      const secretKey = await cp(crypto.computeSecret(this.handshakeSecret, Buffer.from(accept.token, 'base64')))
-      const bob = await cp(createReceiver())
-      const sendKey = await cp(crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64')))
-      if (!(sendKey instanceof Uint8Array)) {
-        throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${sendKey.constructor.name}`), { code: 'invalid-message', sendKey })
-      }
-      const aliceSender = new Sender({ sendKey })
-      return new HandshakeConfirmation({
-        connection: new Connection({
-          sender: aliceSender,
-          receiver: bob.receiver
-        }),
-        // In case you are wondering why we not just simply return "bob" as sender
-        // but instead pass it in two messages: the reason is that without this step
-        // the API is clearer.
-        // TODO: rethink
-        finalMessage: bob.sender.sendKey
-      })
+    async confirm (accept: IHandshakeAcceptMessage, opts?: ITimeoutOptions): Promise<IHandshakeConfirmation> {
+      return await wrapTimeout(async signal => {
+        const cp = checkpoint(signal)
+        const secretKey = await cp(crypto.computeSecret(this.handshakeSecret, Buffer.from(accept.token, 'base64')))
+        const bob = await cp(createReceiver())
+        const sendKey = await cp(crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64')))
+        if (!(sendKey instanceof Uint8Array)) {
+          throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${sendKey.constructor.name}`), { code: 'invalid-message', sendKey })
+        }
+        const aliceSender = new Sender({ sendKey })
+        return new HandshakeConfirmation({
+          connection: new Connection({
+            sender: aliceSender,
+            receiver: bob.receiver
+          }),
+          // In case you are wondering why we not just simply return "bob" as sender
+          // but instead pass it in two messages: the reason is that without this step
+          // the API is clearer.
+          // TODO: rethink
+          finalMessage: bob.sender.sendKey
+        })
+      }, opts)
     }
   }
 
@@ -107,37 +109,41 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
   }
 
   return {
-    async initHandshake ({ signal }: { signal?: AbortSignal } = {}): Promise<HandshakeInit> {
-      const cp = checkpoint(signal)
-      const { receiver, sender } = await cp(createReceiver())
-      const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
-      return new HandshakeInit({
-        receiver,
-        handshakeSecret,
-        firstMessage: Buffer.concat([
-          HANDSHAKE_MSG_VERSION,
-          handshakePublic,
-          sender.sendKey
-        ])
-      })
+    async initHandshake (opts?: ITimeoutOptions): Promise<HandshakeInit> {
+      return await wrapTimeout(async signal => {
+        const cp = checkpoint(signal)
+        const { receiver, sender } = await cp(createReceiver())
+        const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
+        return new HandshakeInit({
+          receiver,
+          handshakeSecret,
+          firstMessage: Buffer.concat([
+            HANDSHAKE_MSG_VERSION,
+            handshakePublic,
+            sender.sendKey
+          ])
+        })
+      }, opts)
     },
-    async acceptHandshake (firstMessage: Uint8Array, { signal }: { signal?: AbortSignal } = {}): Promise<IHandshakeAccept> {
-      const {
-        token,
-        sendKey
-      } = processHandshake(firstMessage)
-      const cp = checkpoint(signal)
-      const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
-      const secretKey = await cp(crypto.computeSecret(handshakeSecret, token))
-      const { receiver, sender } = await cp(createReceiver())
-      return new HandshakeAccept({
-        sender: new Sender({ sendKey }),
-        receiver,
-        acceptMessage: {
-          token: bufferToString(handshakePublic, 'base64'),
-          secret: bufferToString(await crypto.encrypt(secretKey, sender.sendKey), 'base64')
-        }
-      })
+    async acceptHandshake (firstMessage: Uint8Array, opts?: ITimeoutOptions): Promise<IHandshakeAccept> {
+      return await wrapTimeout(async signal => {
+        const {
+          token,
+          sendKey
+        } = processHandshake(firstMessage)
+        const cp = checkpoint(signal)
+        const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
+        const secretKey = await cp(crypto.computeSecret(handshakeSecret, token))
+        const { receiver, sender } = await cp(createReceiver())
+        return new HandshakeAccept({
+          sender: new Sender({ sendKey }),
+          receiver,
+          acceptMessage: {
+            token: bufferToString(handshakePublic, 'base64'),
+            secret: bufferToString(await crypto.encrypt(secretKey, sender.sendKey), 'base64')
+          }
+        })
+      }, opts)
     },
     HandshakeInit,
     HandshakeAccept,
