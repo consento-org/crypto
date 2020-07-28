@@ -1,4 +1,4 @@
-import { TCheckPoint, AbortError, IAbortController, ITimeoutOptions } from './types'
+import { TCheckPoint, AbortError, IAbortController, ITimeoutOptions, IPromiseCleanup } from './types'
 import { AbortController, AbortSignal } from 'abort-controller'
 import { exists } from './exists'
 
@@ -86,15 +86,23 @@ export async function raceWithSignal <TReturn = unknown> (command: (signal: Abor
 
 const noop = (): void => {}
 
-export async function cleanupPromise <T> (command: (resolve: (result?: T) => void, reject: (error: Error) => void, signal: AbortSignal | null | undefined, resetTimeout: () => void) => (() => void) | Promise<() => void>, opts: ITimeoutOptions = {}): Promise<T> {
+export async function cleanupPromise <T> (
+  command: (
+    resolve: (result?: T) => void,
+    reject: (error: Error) => void,
+    signal: AbortSignal | null | undefined,
+    resetTimeout: () => void
+  ) => (IPromiseCleanup | Promise<IPromiseCleanup>),
+  opts: ITimeoutOptions = {}
+): Promise<T> {
   return await wrapTimeout <T>(
     // eslint-disable-next-line @typescript-eslint/promise-function-async
     (signal, resetTimeout): Promise<T> => new Promise((resolve, reject) => {
       const hasSignal = exists(signal)
-      let earlyFinish: () => void
+      let earlyFinish: { error?: Error, result?: T }
       let process: (error: Error | null, result?: T) => void = (error, result) => {
         process = noop
-        earlyFinish = () => (error !== null) ? reject(error) : resolve(result)
+        earlyFinish = { error, result }
       }
       let cleanupP
       try {
@@ -108,39 +116,60 @@ export async function cleanupPromise <T> (command: (resolve: (result?: T) => voi
         reject(error)
         return
       }
-      const withCleanup = (cleanup: () => void): void => {
+      const withCleanup = (cleanup: IPromiseCleanup): void => {
         if (hasSignal && signal.aborted) {
-          earlyFinish = earlyFinish ?? (() => reject(new AbortError()))
+          earlyFinish = earlyFinish ?? { error: new AbortError() }
         }
         if (earlyFinish !== undefined) {
+          let finalP
           try {
-            cleanup()
-          } catch (err) {
-            reject(err)
+            finalP = cleanup()
+          } catch (cleanupError) {
+            reject(earlyFinish.error ?? cleanupError)
             return
           }
-          earlyFinish()
-        } else {
-          const abort = (): void => process(new AbortError())
-          if (hasSignal) {
-            signal.addEventListener('abort', abort)
+          const close = (cleanupError?: Error): void => {
+            const error = earlyFinish.error ?? cleanupError
+            if (exists(error)) {
+              return reject(error)
+            }
+            return resolve(earlyFinish.result)
           }
-          process = (error, result) => {
-            process = noop
-            if (hasSignal) {
-              signal.removeEventListener('abort', abort)
-            }
-            try {
-              cleanup()
-            } catch (cleanupError) {
-              reject(error !== null ? error : cleanupError)
-              return
-            }
-            if (error !== null) {
-              reject(error)
-            } else {
-              resolve(result)
-            }
+          if (finalP instanceof Promise) {
+            finalP.then(() => close(), close)
+            return
+          }
+          close()
+          return
+        }
+        const abort = (): void => process(new AbortError())
+        if (hasSignal) {
+          signal.addEventListener('abort', abort)
+        }
+        process = (error, result) => {
+          process = noop
+          if (hasSignal) {
+            signal.removeEventListener('abort', abort)
+          }
+
+          let finalP: void | Promise<void>
+          try {
+            finalP = cleanup()
+          } catch (cleanupError) {
+            reject(error ?? cleanupError)
+            return
+          }
+          if (finalP instanceof Promise) {
+            finalP.then(
+              () => resolve(result),
+              finalError => reject(error ?? finalError)
+            )
+            return
+          }
+          if (exists(error)) {
+            reject(error)
+          } else {
+            resolve(result)
           }
         }
       }

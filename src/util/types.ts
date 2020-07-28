@@ -3,6 +3,8 @@ export { Buffer } from 'buffer'
 
 export { AbortSignal, AbortController } from 'abort-controller'
 
+export type IPromiseCleanup = () => void | Promise<void>
+
 export type TCheckPoint = <T extends Promise<any>> (input: T) => T
 
 export type IStringOrBuffer = Uint8Array | string

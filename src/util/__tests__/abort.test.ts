@@ -378,4 +378,106 @@ describe('cleanupPromise(template, { timeout, signal }', () => {
     expect(result).toBe('hello')
     expect(cleanupCalled).toBe(true)
   })
+  it('bubbles error in cleanup', async () => {
+    const error = new Error()
+    await expect(cleanupPromise(
+      resolve => {
+        setTimeout(resolve, 1, 'hello')
+        return () => {
+          throw error
+        }
+      }
+    )).rejects.toBe(error)
+  })
+  it('bubbles error in quick cleanup', async () => {
+    const error = new Error()
+    await expect(cleanupPromise(
+      resolve => {
+        resolve('hello')
+        return () => {
+          throw error
+        }
+      }
+    )).rejects.toBe(error)
+  })
+  it('prioritizes regular error before cleanup error', async () => {
+    const errorA = new Error('a')
+    const errorB = new Error('b')
+    await expect(cleanupPromise(
+      (_, reject) => {
+        reject(errorA)
+        return () => {
+          throw errorB
+        }
+      }
+    )).rejects.toBe(errorA)
+  })
+  it('prioritizes regular error before async cleanup error', async () => {
+    const errorA = new Error('a')
+    const errorB = new Error('b')
+    let cleanupCalled = false
+    await expect(cleanupPromise(
+      (_, reject) => {
+        reject(errorA)
+        return async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+          cleanupCalled = true
+          throw errorB
+        }
+      }
+    )).rejects.toBe(errorA)
+    expect(cleanupCalled).toBe(true)
+  })
+  it('awaits for cleanup to finish before returning', async () => {
+    let cleanupFinished = false
+    const result = await cleanupPromise(
+      resolve => {
+        setTimeout(resolve, 1, 'hello')
+        return async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+          cleanupFinished = true
+        }
+      }
+    )
+    expect(result).toBe('hello')
+    expect(cleanupFinished).toBe(true)
+  })
+  it('awaits for cleanup to finish before returning quickly', async () => {
+    let cleanupFinished = false
+    const result = await cleanupPromise(
+      resolve => {
+        resolve('hello')
+        return async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+          cleanupFinished = true
+        }
+      }
+    )
+    expect(result).toBe('hello')
+    expect(cleanupFinished).toBe(true)
+  })
+  it('bubbles async error in cleanup', async () => {
+    const error = new Error()
+    await expect(cleanupPromise(
+      resolve => {
+        setTimeout(resolve, 1, 'hello')
+        return async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+          throw error
+        }
+      }
+    )).rejects.toBe(error)
+  })
+  it('bubbles async error in quick cleanup', async () => {
+    const error = new Error()
+    await expect(cleanupPromise(
+      resolve => {
+        resolve('hello')
+        return async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+          throw error
+        }
+      }
+    )).rejects.toBe(error)
+  })
 })
