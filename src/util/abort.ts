@@ -1,6 +1,7 @@
 import { TCheckPoint, AbortError, IAbortController, ITimeoutOptions, IPromiseCleanup } from './types'
 import { AbortController, AbortSignal } from 'abort-controller'
 import { exists } from './exists'
+import { isPromiseLike } from '.'
 
 export function bubbleAbort (signal?: AbortSignal): void {
   if (signal === undefined || signal === null) {
@@ -95,6 +96,7 @@ export async function cleanupPromise <T> (
   ) => (IPromiseCleanup | Promise<IPromiseCleanup>),
   opts: ITimeoutOptions = {}
 ): Promise<T> {
+  const abortError = new AbortError()
   return await wrapTimeout <T>(
     // eslint-disable-next-line @typescript-eslint/promise-function-async
     (signal, resetTimeout): Promise<T> => new Promise((resolve, reject) => {
@@ -135,14 +137,14 @@ export async function cleanupPromise <T> (
             }
             return resolve(earlyFinish.result)
           }
-          if (finalP instanceof Promise) {
+          if (isPromiseLike(finalP)) {
             finalP.then(() => close(), close)
             return
           }
           close()
           return
         }
-        const abort = (): void => process(new AbortError())
+        const abort = (): void => process(abortError)
         if (hasSignal) {
           signal.addEventListener('abort', abort)
         }
@@ -152,7 +154,7 @@ export async function cleanupPromise <T> (
             signal.removeEventListener('abort', abort)
           }
 
-          let finalP: void | Promise<void>
+          let finalP
           try {
             finalP = cleanup()
           } catch (cleanupError) {
@@ -166,14 +168,14 @@ export async function cleanupPromise <T> (
             }
             return resolve(result)
           }
-          if (finalP instanceof Promise) {
+          if (isPromiseLike(finalP)) {
             finalP.then(() => close(), close)
             return
           }
           close()
         }
       }
-      if (cleanupP instanceof Promise) {
+      if (isPromiseLike(cleanupP)) {
         cleanupP.then(
           withCleanup,
           reject
