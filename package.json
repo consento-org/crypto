@@ -1,6 +1,6 @@
 {
   "name": "@consento/crypto",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "private": true,
   "description": "Crypto functionality used in Consento",
   "main": "index.js",
