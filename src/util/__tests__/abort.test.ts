@@ -480,4 +480,26 @@ describe('cleanupPromise(template, { timeout, signal }', () => {
       }
     )).rejects.toBe(error)
   })
+  it('cleanup doesnt override rejection', async () => {
+    const error = new Error()
+    await expect(cleanupPromise(
+      (_, reject) => {
+        reject(error)
+        return async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+        }
+      }
+    )).rejects.toBe(error)
+  })
+  it('cleanup doesnt override async rejection', async () => {
+    const error = new Error()
+    await expect(cleanupPromise(
+      (_, reject) => {
+        setTimeout(reject, 10, error)
+        return async () => {
+          await new Promise(resolve => setTimeout(resolve, 10))
+        }
+      }
+    )).rejects.toBe(error)
+  })
 })

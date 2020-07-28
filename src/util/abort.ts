@@ -146,7 +146,7 @@ export async function cleanupPromise <T> (
         if (hasSignal) {
           signal.addEventListener('abort', abort)
         }
-        process = (error, result) => {
+        process = (asyncError, result) => {
           process = noop
           if (hasSignal) {
             signal.removeEventListener('abort', abort)
@@ -156,21 +156,21 @@ export async function cleanupPromise <T> (
           try {
             finalP = cleanup()
           } catch (cleanupError) {
-            reject(error ?? cleanupError)
+            reject(asyncError ?? cleanupError)
             return
+          }
+          const close = (cleanupError?: Error): void => {
+            const error = asyncError ?? cleanupError
+            if (exists(error)) {
+              return reject(error)
+            }
+            return resolve(result)
           }
           if (finalP instanceof Promise) {
-            finalP.then(
-              () => resolve(result),
-              finalError => reject(error ?? finalError)
-            )
+            finalP.then(() => close(), close)
             return
           }
-          if (exists(error)) {
-            reject(error)
-          } else {
-            resolve(result)
-          }
+          close()
         }
       }
       if (cleanupP instanceof Promise) {
