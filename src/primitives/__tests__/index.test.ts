@@ -20,7 +20,9 @@ for (const { name, crypto } of cores) {
       expect(receiver.idHex).toBeDefined() // called twice for cache test!
       expect(receiver.idHex).toBe(bufferToString(annonymous.id, 'hex'))
       expect(receiver.receiveKey).toBeDefined()
+      expect(receiver.receiveKey.length).toBe(160)
       expect(sender.sendKey).toBeDefined()
+      expect(sender.sendKey.length).toBe(128)
     })
 
     it('restoring a partial channel from a base64 string', async () => {
@@ -47,6 +49,8 @@ for (const { name, crypto } of cores) {
       const recovered = new Sender(json)
       expect(bufferToString(recovered.sendKey)).toBe(bufferToString(original.sendKey))
       expect(recovered.sendKeyBase64).toBe(original.sendKeyBase64)
+      expect(recovered.id.length).toBe(32)
+      expect(recovered.sendKey.length).toBe(128)
     })
 
     it('a sender can be restored from its sendKey only', async () => {

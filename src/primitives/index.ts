@@ -12,35 +12,36 @@ import {
 import { Buffer, IEncodable, ITimeoutOptions } from '../util/types'
 import { bufferToString, toBuffer, wrapTimeout, bubbleAbort } from '../util'
 
-const VERIFY_KEY_SIZE = 32
-const VERIFY_KEY_START = 0
-const VERIFY_KEY_END = VERIFY_KEY_SIZE
+const DECRYPT_KEY_SIZE = 32
+const DECRYPT_KEY_START = 0
+const DECRYPT_KEY_END = DECRYPT_KEY_START + DECRYPT_KEY_SIZE
+
 const SIGN_KEY_SIZE = 64
-const SIGN_KEY_START = VERIFY_KEY_END
+const SIGN_KEY_START = 0
 const SIGN_KEY_END = SIGN_KEY_START + SIGN_KEY_SIZE
+
 const ENCRYPT_KEY_SIZE = 32
 const ENCRYPT_KEY_START = SIGN_KEY_END
 const ENCRYPT_KEY_END = ENCRYPT_KEY_START + ENCRYPT_KEY_SIZE
-const DECRYPT_KEY_START = ENCRYPT_KEY_END
 
-function signKeyFromSendKey (receiveKey: Uint8Array): Uint8Array {
-  return receiveKey.slice(SIGN_KEY_START, SIGN_KEY_END)
+function decryptKeyFromReceiveKey (receiveKey: Uint8Array): Uint8Array {
+  return receiveKey.slice(DECRYPT_KEY_START, DECRYPT_KEY_END)
+}
+
+function sendKeyFromReceiveKey (receiveKey: Uint8Array): Uint8Array {
+  return receiveKey.slice(DECRYPT_KEY_END)
+}
+
+function signKeyFromSendKey (sendKey: Uint8Array): Uint8Array {
+  return sendKey.slice(SIGN_KEY_START, SIGN_KEY_END)
 }
 
 function encryptKeyFromSendKey (sendKey: Uint8Array): Uint8Array {
   return sendKey.slice(ENCRYPT_KEY_START, ENCRYPT_KEY_END)
 }
 
-function decryptKeyFromReceiveKey (receiveKey: Uint8Array): Uint8Array {
-  return receiveKey.slice(DECRYPT_KEY_START)
-}
-
 function verifyKeyFromSendKey (sendKey: Uint8Array): Uint8Array {
-  return sendKey.slice(VERIFY_KEY_START, VERIFY_KEY_END)
-}
-
-function sendKeyFromReceiveKey (receiveKey: Uint8Array): Uint8Array {
-  return receiveKey.slice(VERIFY_KEY_START, ENCRYPT_KEY_END)
+  return sendKey.slice(ENCRYPT_KEY_END)
 }
 
 export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
@@ -281,9 +282,8 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
           crypto.createSignKeys()
         ])
         bubbleAbort(signal)
-        const sendKey = Buffer.concat([sign.publicKey, sign.privateKey, encrypt.publicKey])
         const receiver = new Receiver({
-          receiveKey: Buffer.concat([sendKey, encrypt.privateKey])
+          receiveKey: Buffer.concat([encrypt.privateKey, sign.privateKey, encrypt.publicKey, sign.publicKey])
         })
         return receiver
       }, opts)
