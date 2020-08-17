@@ -1,6 +1,6 @@
 import { setupPrimitives } from '../'
 import { cores } from '../../core/cores'
-import { bufferToString } from '../../util/buffer'
+import { bufferToString, bufferCompare } from '../../util/buffer'
 import { Buffer } from '../../util/types'
 
 for (const { name, crypto } of cores) {
@@ -30,6 +30,7 @@ for (const { name, crypto } of cores) {
       const idBase64 = bufferToString(id, 'base64')
       const annonymous = new Annonymous({ id: idBase64 })
       expect(bufferToString(annonymous.id, 'base64')).toBe(idBase64)
+      expect(annonymous.id.length).toBe(32)
     })
 
     it('two channels have different ids', async () => {
@@ -68,6 +69,18 @@ for (const { name, crypto } of cores) {
       const recovered = new Receiver(json)
       expect(bufferToString(recovered.receiveKey)).toBe(bufferToString(original.receiveKey))
       expect(recovered.receiveKeyBase64).toBe(original.receiveKeyBase64)
+      expect(recovered.sender.idBase64).toBe(original.sender.idBase64)
+      expect(recovered.idBase64).toBe(original.idBase64)
+      const recoveredId = Buffer.from(recovered.idBase64, 'base64')
+      expect(recoveredId.length).toBe(32)
+      expect(bufferCompare(recoveredId, original.id)).toBe(0)
+      const message = Buffer.from('Hello World')
+      const recoveredSender = new Sender(recovered.sender.toJSON())
+      const recoveredAnnonymous = new Annonymous(recoveredSender.annonymous.toJSON())
+      expect(await recoveredAnnonymous.verify(await original.sender.sign(message), message)).toBe(true)
+      expect(await original.sender.annonymous.verify(await recoveredSender.sign(message), message)).toBe(true)
+      expect(await recovered.receiver.decrypt(await recoveredSender.encrypt('hi!'))).toEqual({ body: 'hi!' })
+      expect(await original.receiver.decrypt(await original.sender.encrypt('hi!'))).toEqual({ body: 'hi!' })
     })
 
     it('a receiver can be restored from its receiveKey only', async () => {

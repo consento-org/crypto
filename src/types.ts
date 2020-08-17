@@ -37,6 +37,7 @@ export interface ISenderOptions {
 export interface ISender extends IChannelId {
   toJSON(): ISenderJSON
   readonly sendKey: Uint8Array
+  readonly sendKeyBase64: string
   readonly encryptKey: Uint8Array
   readonly signKey: Uint8Array
   readonly sender: this
@@ -56,6 +57,7 @@ export interface IReceiverOptions {
 export interface IReceiver extends IChannelId {
   readonly receiveKey: Uint8Array
   readonly receiver: this
+  readonly receiveKeyBase64: string
   readonly sender: ISender
   readonly annonymous: IAnnonymous
   toJSON(): IReceiverJSON
