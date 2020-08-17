@@ -45,18 +45,30 @@ function sendKeyFromReceiveKey (receiveKey: Uint8Array): Uint8Array {
 
 export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
   class Annonymous implements IAnnonymous {
-    id: Uint8Array
-    idBase64: string
+    _id?: Uint8Array
+    _idBase64?: string
     _idHex?: string
 
     constructor ({ id }: IAnnonymousOptions) {
       if (typeof id === 'string') {
-        this.idBase64 = id
-        this.id = Buffer.from(id, 'base64')
+        this._idBase64 = id
       } else {
-        this.idBase64 = bufferToString(id, 'base64')
-        this.id = id
+        this._id = id
       }
+    }
+
+    get id (): Uint8Array {
+      if (this._id === undefined) {
+        this._id = toBuffer(this._idBase64)
+      }
+      return this._id
+    }
+
+    get idBase64 (): string {
+      if (this._idBase64 === undefined) {
+        this._idBase64 = bufferToString(this._id, 'base64')
+      }
+      return this._idBase64
     }
 
     get idHex (): string {
@@ -87,17 +99,17 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
   }
 
   class Sender implements ISender {
-    sendKey: Uint8Array
-    _sendKeyBase64: string
-    receiveKeyBase64: any
-    _annonymous: IAnnonymous
-    _signKey: Uint8Array
-    _encryptKey: Uint8Array
+    _sendKey?: Uint8Array
+    _sendKeyBase64?: string
+    _annonymous?: IAnnonymous
+    _signKey?: Uint8Array
+    _encryptKey?: Uint8Array
 
-    constructor ({ id, sendKey }: ISenderOptions) {
-      this.sendKey = toBuffer(sendKey)
-      if (id !== undefined) {
-        this._annonymous = new Annonymous({ id })
+    constructor ({ sendKey }: ISenderOptions) {
+      if (typeof sendKey === 'string') {
+        this._sendKeyBase64 = sendKey
+      } else {
+        this._sendKey = sendKey
       }
     }
 
@@ -113,6 +125,13 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
         this._encryptKey = encryptKeyFromSendKey(this.sendKey)
       }
       return this._encryptKey
+    }
+
+    get sendKey (): Uint8Array {
+      if (this._sendKey === undefined) {
+        this._sendKey = toBuffer(this._sendKeyBase64)
+      }
+      return this._sendKey
     }
 
     get sendKeyBase64 (): string {
@@ -163,15 +182,15 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
   }
 
   class Receiver implements IReceiver {
-    receiveKey: Uint8Array
-    _receiveKeyBase64: string
-    _sender: ISender
-    _annonymous: IAnnonymous
+    _receiveKey?: Uint8Array
+    _receiveKeyBase64?: string
+    _sender?: ISender
 
-    constructor ({ id, sendKey, receiveKey }: IReceiverOptions) {
-      this.receiveKey = toBuffer(receiveKey)
-      if (sendKey !== undefined) {
-        this._sender = new Sender({ id, sendKey })
+    constructor ({ receiveKey }: IReceiverOptions) {
+      if (typeof receiveKey === 'string') {
+        this._receiveKeyBase64 = receiveKey
+      } else {
+        this._receiveKey = receiveKey
       }
     }
 
@@ -204,6 +223,13 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
 
     get decryptKey (): Uint8Array {
       return decryptKeyFromReceiveKey(this.receiveKey)
+    }
+
+    get receiveKey (): Uint8Array {
+      if (this._receiveKey === undefined) {
+        this._receiveKey = toBuffer(this._receiveKeyBase64)
+      }
+      return this._receiveKey
     }
 
     get receiveKeyBase64 (): string {
@@ -257,8 +283,6 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
         bubbleAbort(signal)
         const sendKey = Buffer.concat([sign.publicKey, sign.privateKey, encrypt.publicKey])
         const receiver = new Receiver({
-          id: sign.publicKey,
-          sendKey,
           receiveKey: Buffer.concat([sendKey, encrypt.privateKey])
         })
         return receiver

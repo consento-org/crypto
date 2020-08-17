@@ -31,7 +31,6 @@ export interface ISenderJSON {
 }
 
 export interface ISenderOptions {
-  id?: IStringOrBuffer
   sendKey: IStringOrBuffer
 }
 
@@ -51,8 +50,6 @@ export interface IReceiverJSON {
 }
 
 export interface IReceiverOptions {
-  id?: IStringOrBuffer
-  sendKey?: IStringOrBuffer
   receiveKey: IStringOrBuffer
 }
 
