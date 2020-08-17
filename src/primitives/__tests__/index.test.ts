@@ -2,7 +2,6 @@ import { setupPrimitives } from '../'
 import { cores } from '../../core/cores'
 import { bufferToString } from '../../util/buffer'
 import { Buffer } from '../../util/types'
-import { isAnnonymous, isReceiver, isSender } from '../..'
 
 for (const { name, crypto } of cores) {
   const variant = setupPrimitives(crypto)
@@ -22,9 +21,6 @@ for (const { name, crypto } of cores) {
       expect(receiver.idHex).toBe(bufferToString(annonymous.id, 'hex'))
       expect(receiver.receiveKey).toBeDefined()
       expect(sender.sendKey).toBeDefined()
-      expect(isAnnonymous(annonymous)).toBe(true)
-      expect(isSender(annonymous)).toBe(false)
-      expect(isReceiver(annonymous)).toBe(false)
     })
 
     it('restoring a partial channel from a base64 string', async () => {
@@ -51,8 +47,6 @@ for (const { name, crypto } of cores) {
       const recovered = new Sender(json)
       expect(bufferToString(recovered.sendKey)).toBe(bufferToString(original.sendKey))
       expect(recovered.compare(original)).toBe(0)
-      expect(isSender(recovered)).toBe(true)
-      expect(isReceiver(recovered)).toBe(false)
     })
 
     it('a sender can be restored from its sendKey only', async () => {
@@ -60,8 +54,6 @@ for (const { name, crypto } of cores) {
       const recovered = await new Sender({ sendKey: original.sendKey })
       expect(bufferToString(recovered.sendKey)).toBe(bufferToString(original.sendKey))
       expect(recovered.compare(original)).toBe(0)
-      expect(isSender(recovered)).toBe(true)
-      expect(isReceiver(recovered)).toBe(false)
     })
 
     it('a receiver can be restored from its toJSON representation', async () => {
@@ -73,8 +65,6 @@ for (const { name, crypto } of cores) {
       expect(bufferToString(recovered.receiveKey)).toBe(bufferToString(original.receiveKey))
       expect(recovered.compare(original)).toBe(0)
       expect(recovered.equals(original)).toBe(true)
-      expect(isReceiver(recovered)).toBe(true)
-      expect(isSender(recovered)).toBe(false)
     })
 
     it('a receiver can be restored from its receiveKey only', async () => {
@@ -82,9 +72,6 @@ for (const { name, crypto } of cores) {
       const recovered = new Receiver({ receiveKey: original.receiveKey })
       expect(bufferToString(recovered.receiveKey)).toBe(bufferToString(original.receiveKey))
       expect(recovered.equals(original)).toBe(true)
-      expect(isAnnonymous(recovered)).toBe(false)
-      expect(isReceiver(recovered)).toBe(true)
-      expect(isSender(recovered)).toBe(false)
     })
 
     it('a annonymous can be restored from its toJSON representation', async () => {
@@ -98,9 +85,6 @@ for (const { name, crypto } of cores) {
       const recovered = new Annonymous(json)
       expect(recovered.idBase64).toBe(original.idBase64)
       expect(recovered.compare(original)).toBe(0)
-      expect(isAnnonymous(recovered)).toBe(true)
-      expect(isReceiver(recovered)).toBe(false)
-      expect(isSender(recovered)).toBe(false)
     })
 
     it('signing and verifying a message', async () => {

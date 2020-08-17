@@ -2,7 +2,6 @@ import { ICryptoCore } from '../core/types'
 import { Buffer, ITimeoutOptions } from '../util/types'
 import { toBuffer, bufferToString } from '../util/buffer'
 import { ICryptoHandshake, IHandshakeInit, IReceiver, ICryptoPrimitives, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
-import { isReceiver } from '../util/isReceiver'
 import { checkpoint, wrapTimeout } from '../util/abort'
 
 export const HANDSHAKE_MSG_VERSION = Buffer.from([1])
@@ -30,7 +29,7 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
     handshakeSecret: Uint8Array
 
     constructor ({ receiver, handshakeSecret, firstMessage }: IHandshakeInitOptions) {
-      this.receiver = isReceiver(receiver) ? receiver : new Receiver(receiver)
+      this.receiver = new Receiver(receiver)
       this.handshakeSecret = toBuffer(handshakeSecret)
       this.firstMessage = toBuffer(firstMessage)
     }

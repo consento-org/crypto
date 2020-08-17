@@ -1,8 +1,8 @@
 import { ICryptoCore, IDecryption, IEncryptedMessage } from '../core/types'
 import {
-  IAnnonymous, IAnnonymousOptions, IAnnonymousJSON, annonymousFlag,
-  IReceiver, IReceiverOptions, receiverFlag,
-  ISender, ISenderOptions, senderFlag,
+  IAnnonymous, IAnnonymousOptions, IAnnonymousJSON,
+  IReceiver, IReceiverOptions,
+  ISender, ISenderOptions,
   ICryptoPrimitives,
   IConnectionOptions,
   IConnectionJSON,
@@ -11,7 +11,6 @@ import {
 } from '../types'
 import { Buffer, IEncodable, ITimeoutOptions } from '../util/types'
 import { bufferToString, bufferCompare, toBuffer, wrapTimeout, bubbleAbort } from '../util'
-import { isReceiver, isSender } from '..'
 
 const VERIFY_KEY_SIZE = 32
 const VERIFY_KEY_START = 0
@@ -46,7 +45,6 @@ function sendKeyFromReceiveKey (receiveKey: Uint8Array): Uint8Array {
 
 export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
   class Annonymous implements IAnnonymous {
-    [annonymousFlag]: true
     id: Uint8Array
     idBase64: string
     _idHex?: string
@@ -59,7 +57,6 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
         this.idBase64 = bufferToString(id, 'base64')
         this.id = id
       }
-      this[annonymousFlag] = true
     }
 
     get idHex (): string {
@@ -101,7 +98,6 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
   }
 
   class Sender implements ISender {
-    [senderFlag]: true
     sendKey: Uint8Array
     _sendKeyBase64: string
     receiveKeyBase64: any
@@ -110,7 +106,6 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
     _encryptKey: Uint8Array
 
     constructor ({ id, sendKey }: ISenderOptions) {
-      this[senderFlag] = true
       this.sendKey = toBuffer(sendKey)
       if (id !== undefined) {
         this._annonymous = new Annonymous({ id })
@@ -193,14 +188,12 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
   }
 
   class Receiver implements IReceiver {
-    [receiverFlag]: true
     receiveKey: Uint8Array
     _receiveKeyBase64: string
     _sender: ISender
     _annonymous: IAnnonymous
 
     constructor ({ id, sendKey, receiveKey }: IReceiverOptions) {
-      this[receiverFlag] = true
       this.receiveKey = toBuffer(receiveKey)
       if (sendKey !== undefined) {
         this._sender = new Sender({ id, sendKey })

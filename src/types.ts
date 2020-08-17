@@ -6,10 +6,6 @@ export * from './core/types'
 
 export { IEncryptedMessage, IDecryption }
 
-export const receiverFlag = Symbol.for('consento/crypto/receiver')
-export const senderFlag = Symbol.for('consento/crypto/sender')
-export const annonymousFlag = Symbol.for('consento/crypto/annonymous')
-
 export interface IAnnonymousJSON {
   id: string
 }
@@ -30,7 +26,6 @@ export interface IChannelId {
 }
 
 export interface IAnnonymous extends IComparable<IAnnonymous>, IChannelId {
-  [annonymousFlag]: true
   toJSON(): IAnnonymousJSON
   verify(signature: Uint8Array, body: Uint8Array): Promise<boolean>
   verifyMessage(message: IEncryptedMessage): Promise<boolean>
@@ -46,7 +41,6 @@ export interface ISenderOptions {
 }
 
 export interface ISender extends IComparable<ISender>, IChannelId {
-  [senderFlag]: true
   toJSON(): ISenderJSON
   readonly sendKey: Uint8Array
   readonly encryptKey: Uint8Array
@@ -68,7 +62,6 @@ export interface IReceiverOptions {
 }
 
 export interface IReceiver extends IComparable<IReceiver>, IChannelId {
-  [receiverFlag]: true
   readonly receiveKey: Uint8Array
   readonly receiver: this
   readonly sender: ISender
