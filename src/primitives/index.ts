@@ -10,7 +10,7 @@ import {
   IReceiverJSON
 } from '../types'
 import { Buffer, IEncodable, ITimeoutOptions } from '../util/types'
-import { bufferToString, bufferCompare, toBuffer, wrapTimeout, bubbleAbort } from '../util'
+import { bufferToString, toBuffer, wrapTimeout, bubbleAbort } from '../util'
 
 const VERIFY_KEY_SIZE = 32
 const VERIFY_KEY_START = 0
@@ -64,17 +64,6 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
         this._idHex = bufferToString(this.id, 'hex')
       }
       return this._idHex
-    }
-
-    equals (other: IAnnonymous | ISender | IReceiver): boolean {
-      return this.compare(other) === 0
-    }
-
-    compare (other: IAnnonymous | ISender | IReceiver): number {
-      if (isSender(other) || isReceiver(other)) {
-        return 1
-      }
-      return bufferCompare(other.id, this.id)
     }
 
     toJSON (): IAnnonymousJSON {
@@ -156,20 +145,6 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
       return this._annonymous
     }
 
-    equals (other: IAnnonymous | ISender | IReceiver): boolean {
-      return this.compare(other) === 0
-    }
-
-    compare (other: IAnnonymous | ISender | IReceiver): number {
-      if (isReceiver(other)) {
-        return 1
-      }
-      if (!isSender(other)) {
-        return -1
-      }
-      return bufferCompare(other.sendKey, this.sendKey)
-    }
-
     toJSON (): ISenderJSON {
       return { sendKey: this.sendKeyBase64 }
     }
@@ -236,17 +211,6 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
         this._receiveKeyBase64 = bufferToString(this.receiveKey, 'base64')
       }
       return this._receiveKeyBase64
-    }
-
-    equals (other: IReceiver | ISender | IAnnonymous): boolean {
-      return this.compare(other) === 0
-    }
-
-    compare (other: IReceiver | ISender | IAnnonymous): number {
-      if (!isReceiver(other)) {
-        return -1
-      }
-      return bufferCompare(other.receiveKey, this.receiveKey)
     }
 
     toJSON (): IReceiverJSON {

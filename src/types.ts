@@ -14,18 +14,13 @@ export interface IAnnonymousOptions {
   id: IStringOrBuffer
 }
 
-export interface IComparable<Base> {
-  equals(other: Base): boolean
-  compare(other: Base): number
-}
-
 export interface IChannelId {
   readonly id: Uint8Array
   readonly idBase64: string
   readonly idHex: string
 }
 
-export interface IAnnonymous extends IComparable<IAnnonymous>, IChannelId {
+export interface IAnnonymous extends IChannelId {
   toJSON(): IAnnonymousJSON
   verify(signature: Uint8Array, body: Uint8Array): Promise<boolean>
   verifyMessage(message: IEncryptedMessage): Promise<boolean>
@@ -40,7 +35,7 @@ export interface ISenderOptions {
   sendKey: IStringOrBuffer
 }
 
-export interface ISender extends IComparable<ISender>, IChannelId {
+export interface ISender extends IChannelId {
   toJSON(): ISenderJSON
   readonly sendKey: Uint8Array
   readonly encryptKey: Uint8Array
@@ -61,7 +56,7 @@ export interface IReceiverOptions {
   receiveKey: IStringOrBuffer
 }
 
-export interface IReceiver extends IComparable<IReceiver>, IChannelId {
+export interface IReceiver extends IChannelId {
   readonly receiveKey: Uint8Array
   readonly receiver: this
   readonly sender: ISender

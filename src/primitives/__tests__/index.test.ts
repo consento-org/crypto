@@ -46,14 +46,14 @@ for (const { name, crypto } of cores) {
       expect(typeof json.sendKey).toBe('string')
       const recovered = new Sender(json)
       expect(bufferToString(recovered.sendKey)).toBe(bufferToString(original.sendKey))
-      expect(recovered.compare(original)).toBe(0)
+      expect(recovered.sendKeyBase64).toBe(original.sendKeyBase64)
     })
 
     it('a sender can be restored from its sendKey only', async () => {
       const original = await (await createReceiver()).sender
       const recovered = await new Sender({ sendKey: original.sendKey })
       expect(bufferToString(recovered.sendKey)).toBe(bufferToString(original.sendKey))
-      expect(recovered.compare(original)).toBe(0)
+      expect(recovered.idHex).toBe(original.idHex)
     })
 
     it('a receiver can be restored from its toJSON representation', async () => {
@@ -63,15 +63,14 @@ for (const { name, crypto } of cores) {
       expect(typeof json.receiveKey).toBe('string')
       const recovered = new Receiver(json)
       expect(bufferToString(recovered.receiveKey)).toBe(bufferToString(original.receiveKey))
-      expect(recovered.compare(original)).toBe(0)
-      expect(recovered.equals(original)).toBe(true)
+      expect(recovered.receiveKeyBase64).toBe(original.receiveKeyBase64)
     })
 
     it('a receiver can be restored from its receiveKey only', async () => {
       const original = await createReceiver()
       const recovered = new Receiver({ receiveKey: original.receiveKey })
       expect(bufferToString(recovered.receiveKey)).toBe(bufferToString(original.receiveKey))
-      expect(recovered.equals(original)).toBe(true)
+      expect(recovered.sender.sendKeyBase64).toBe(original.sender.sendKeyBase64)
     })
 
     it('a annonymous can be restored from its toJSON representation', async () => {
@@ -84,7 +83,6 @@ for (const { name, crypto } of cores) {
       expect(typeof json.id).toBe('string')
       const recovered = new Annonymous(json)
       expect(recovered.idBase64).toBe(original.idBase64)
-      expect(recovered.compare(original)).toBe(0)
     })
 
     it('signing and verifying a message', async () => {
@@ -146,26 +144,5 @@ for (const { name, crypto } of cores) {
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       expect(annonymous.toString()).toBe(`Annonymous[id=${annonymous.idBase64}]`)
     })
-
-    /*
-    it('can be compared to any other combination of channels', async () => {
-      const sender = await new Sender({ sendKey: 'uZPG3e99DnfSbURVKClY3TNLkgwT6d/driyJmZmV4gi2BSkIJHjmoU10MdBJBHYHeDLoUZSCZLDDQs1jJ2Hksg==' })
-      const otherSender = await new Sender({ sendKey: 'xfM6Hn7mFcw8FyPzZkqVttyjlRB/8xx6p75+jrKurVuJvca/GSwcO4m5mXtbHH007vcNbH8WhT7acMe5fl3fEA==' })
-      const receiver = sender.newReceiver()
-      const annonymous = sender.newAnnonymous()
-
-      expect(sender.compare(receiver)).toBe(1)
-      expect(sender.compare(annonymous)).toBe(1)
-      expect(sender.compare(otherSender)).toBe(-1)
-      expect(otherSender.compare(sender)).toBe(1)
-      expect(receiver.compare(sender)).toBe(-1)
-      expect(receiver.compare(annonymous)).toBe(1)
-      expect(annonymous.compare(sender)).toBe(-1)
-      expect(annonymous.compare(receiver)).toBe(-1)
-      expect(annonymous.compare(otherSender.newAnnonymous())).toBe(1)
-      expect(annonymous.compare(null)).toBe(1)
-      expect(annonymous.compare(undefined)).toBe(1)
-    })
-    */
   })
 }
