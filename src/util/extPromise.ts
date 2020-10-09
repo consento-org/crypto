@@ -12,8 +12,8 @@ export function extPromise <T> (): IExtPromise<T> {
     _resolve = resolve
     _reject = reject
   }) as IExtPromise<T>
-  result._resolve = _resolve
-  result._reject = _reject
+  result._resolve = _resolve as unknown as (data: T) => void
+  result._reject = _reject as unknown as (error: Error) => void
   // eslint-disable-next-line @typescript-eslint/return-await
   return result
 }

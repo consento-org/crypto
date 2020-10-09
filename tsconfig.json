@@ -9,6 +9,7 @@
       "ES2018.Promise",
       "DOM"
     ],
+    "strict": true,
     "noImplicitAny": true,
     "moduleResolution": "node",
     "sourceMap": true,

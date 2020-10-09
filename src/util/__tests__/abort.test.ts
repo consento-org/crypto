@@ -74,7 +74,7 @@ describe('wrapTimeout(template, { timeout, signal })', () => {
       wrapTimeout(async (signal) => {
         expect(signal).toBeInstanceOf(AbortSignal)
         return await new Promise((resolve, reject) => {
-          signal.addEventListener('abort', () => {
+          signal?.addEventListener('abort', () => {
             signalAborted = true
             reject(new AbortError())
           })
@@ -92,7 +92,7 @@ describe('wrapTimeout(template, { timeout, signal })', () => {
       wrapTimeout(async (signal) => {
         expect(signal).toBe(controller.signal)
         return await new Promise((resolve, reject) => {
-          signal.addEventListener('abort', () => {
+          signal?.addEventListener('abort', () => {
             reject(new AbortError())
           })
         })
@@ -107,7 +107,7 @@ describe('wrapTimeout(template, { timeout, signal })', () => {
       wrapTimeout(async (signal) => {
         expect(signal).not.toBe(controller.signal)
         return await new Promise((resolve, reject) => {
-          signal.addEventListener('abort', () => {
+          signal?.addEventListener('abort', () => {
             reject(new AbortError())
           })
         })
@@ -123,7 +123,7 @@ describe('wrapTimeout(template, { timeout, signal })', () => {
       wrapTimeout(async (signal) => {
         expect(signal).not.toBe(controller.signal)
         return await new Promise((resolve, reject) => {
-          signal.addEventListener('abort', () => {
+          signal?.addEventListener('abort', () => {
             signalAborted = true
             reject(new AbortError())
           })
@@ -348,7 +348,7 @@ describe('cleanupPromise(template, { timeout, signal }', () => {
     const p = cleanupPromise(
       async (_, __, signal) => {
         await new Promise(resolve => setTimeout(resolve, 10))
-        expect(signal.aborted).toBe(true)
+        expect(signal?.aborted).toBe(true)
         return () => {
           cleanupCalled = true
         }

@@ -3,7 +3,7 @@ import { AbortController, AbortSignal } from 'abort-controller'
 import { exists } from './exists'
 import { isPromiseLike } from '.'
 
-export function bubbleAbort (signal?: AbortSignal): void {
+export function bubbleAbort (signal?: AbortSignal | null): void {
   if (signal === undefined || signal === null) {
     return
   }
@@ -13,7 +13,7 @@ export function bubbleAbort (signal?: AbortSignal): void {
 }
 
 const cache = new WeakMap<AbortSignal, TCheckPoint>()
-const passthrough: TCheckPoint = (input) => input
+const passthrough: TCheckPoint = <T> (input: T): T => input
 
 export function checkpoint (signal?: AbortSignal): TCheckPoint {
   if (signal === undefined || signal === null) {
@@ -21,22 +21,20 @@ export function checkpoint (signal?: AbortSignal): TCheckPoint {
   }
   let cp = cache.get(signal)
   if (cp === undefined) {
-    // eslint-disable-next-line @typescript-eslint/promise-function-async
-    cp = (<T> (input: Promise<T>): Promise<T> => {
-      if (input === null || input === undefined) {
-        if (signal.aborted) {
-          throw new AbortError()
-        }
-        return
-      }
-      return input
-        .then(data => {
+    cp = <T> (input: T): T => {
+      if (isPromiseLike(input)) {
+        return input.then(data => {
           if (signal.aborted) {
             throw new AbortError()
           }
           return data
-        })
-    }) as TCheckPoint
+        }) as unknown as T
+      }
+      if (signal.aborted) {
+        throw new AbortError()
+      }
+      return input
+    }
     cache.set(signal, cp)
   }
   return cp
@@ -100,8 +98,7 @@ export async function cleanupPromise <T> (
   return await wrapTimeout <T>(
     // eslint-disable-next-line @typescript-eslint/promise-function-async
     (signal, resetTimeout): Promise<T> => new Promise((resolve, reject) => {
-      const hasSignal = exists(signal)
-      let earlyFinish: { error?: Error, result?: T }
+      let earlyFinish: { error?: Error | null, result?: T }
       let process: (error: Error | null, result?: T) => void = (error, result) => {
         process = noop
         earlyFinish = { error, result }
@@ -119,6 +116,8 @@ export async function cleanupPromise <T> (
         return
       }
       const withCleanup = (cleanup: IPromiseCleanup): void => {
+        const hasSignal = exists(signal)
+        // @ts-expect-error 2532 - signal is certainly not undefined with hasSignal
         if (hasSignal && signal.aborted) {
           earlyFinish = earlyFinish ?? { error: new AbortError() }
         }
@@ -146,11 +145,13 @@ export async function cleanupPromise <T> (
         }
         const abort = (): void => process(abortError)
         if (hasSignal) {
+          // @ts-expect-error 2532 - signal is certainly not undefined with hasSignal
           signal.addEventListener('abort', abort)
         }
         process = (asyncError, result) => {
           process = noop
           if (hasSignal) {
+            // @ts-expect-error 2532 - signal is certainly not undefined with hasSignal
             signal.removeEventListener('abort', abort)
           }
 
@@ -188,13 +189,13 @@ export async function cleanupPromise <T> (
   )
 }
 
-export async function wrapTimeout <T> (command: (signal: AbortSignal, resetTimeout: () => void) => Promise<T>, { timeout, signal: inputSignal }: ITimeoutOptions = {}): Promise<T> {
+export async function wrapTimeout <T> (command: (signal: AbortSignal | undefined, resetTimeout: () => void) => Promise<T>, { timeout, signal: inputSignal }: ITimeoutOptions = {}): Promise<T> {
   if (!exists(timeout) || timeout === 0) {
     bubbleAbort(inputSignal)
     return await command(inputSignal, noop)
   }
   return await raceWithSignal <T>(signal => {
-    let reset: () => void
+    let reset: () => void = noop
     const p = new Promise <T>((resolve, reject) => {
       let timer: any
       const clear = (): void => {

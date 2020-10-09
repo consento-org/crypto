@@ -60,14 +60,14 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
 
     get id (): Uint8Array {
       if (this._id === undefined) {
-        this._id = toBuffer(this._idBase64)
+        this._id = toBuffer(this._idBase64 as unknown as string)
       }
       return this._id
     }
 
     get idBase64 (): string {
       if (this._idBase64 === undefined) {
-        this._idBase64 = bufferToString(this._id, 'base64')
+        this._idBase64 = bufferToString(this._id as unknown as Uint8Array, 'base64')
       }
       return this._idBase64
     }
@@ -130,14 +130,14 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
 
     get sendKey (): Uint8Array {
       if (this._sendKey === undefined) {
-        this._sendKey = toBuffer(this._sendKeyBase64)
+        this._sendKey = toBuffer(this._sendKeyBase64 as unknown as string)
       }
       return this._sendKey
     }
 
     get sendKeyBase64 (): string {
       if (this._sendKeyBase64 === undefined) {
-        this._sendKeyBase64 = bufferToString(this.sendKey, 'base64')
+        this._sendKeyBase64 = bufferToString(this._sendKey as unknown as Uint8Array, 'base64')
       }
       return this._sendKeyBase64
     }
@@ -228,14 +228,14 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
 
     get receiveKey (): Uint8Array {
       if (this._receiveKey === undefined) {
-        this._receiveKey = toBuffer(this._receiveKeyBase64)
+        this._receiveKey = toBuffer(this._receiveKeyBase64 as unknown as string)
       }
       return this._receiveKey
     }
 
     get receiveKeyBase64 (): string {
       if (this._receiveKeyBase64 === undefined) {
-        this._receiveKeyBase64 = bufferToString(this.receiveKey, 'base64')
+        this._receiveKeyBase64 = bufferToString(this._receiveKey as unknown as Uint8Array, 'base64')
       }
       return this._receiveKeyBase64
     }

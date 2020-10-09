@@ -2,6 +2,7 @@ import { setup } from '../../setup'
 import { cores } from '../../core/cores'
 import { IReceiver, ISender, IEncryptedMessage, IHandshakeAcceptMessage } from '../../types'
 import { IEncodable } from '../../util/types'
+import { exists } from '../../util'
 
 const channels: { [key: string]: (msg: IEncryptedMessage) => Promise<void> } = {}
 
@@ -11,14 +12,21 @@ function listenTo (receiver: IReceiver, handler: (msg: IEncodable, unlisten?: ()
     delete channels[receiver.annonymous.idHex]
   }
   const handlerRaw = async (msg: IEncryptedMessage): Promise<void> => {
-    await handler((await receiver.decrypt(msg)).body, unlisten)
+    const decryption = await receiver.decrypt(msg)
+    if ('body' in decryption) {
+      await handler(decryption.body, unlisten)
+    } else {
+      throw new Error(decryption.error)
+    }
   }
   channels[receiver.annonymous.idHex] = handlerRaw
   return unlisten
 }
 function listenOnce (receiver: IReceiver, handler: (msg: IEncodable) => any): () => void {
   return listenTo(receiver, async (msg, unlisten) => {
-    unlisten()
+    if (exists(unlisten)) {
+      unlisten()
+    }
     await handler(msg)
   })
 }

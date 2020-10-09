@@ -16,10 +16,15 @@ export enum EDecryptionError {
   invalidSignature = 'invalid-signature'
 }
 
-export interface IDecryption {
-  body?: IEncodable
-  error?: EDecryptionError
+export interface IDecryptionError {
+  error: EDecryptionError
 }
+
+export interface IDecryptionSuccess {
+  body: IEncodable
+}
+
+export type IDecryption = IDecryptionSuccess | IDecryptionError
 
 export interface ICryptoCore {
   deriveKdfKey (key: Uint8Array, index?: number): Promise<Uint8Array>
