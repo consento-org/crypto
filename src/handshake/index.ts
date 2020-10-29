@@ -135,7 +135,7 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
         const secretKey = await cp(crypto.computeSecret(handshakeSecret, token))
         const { receiver, sender } = await cp(createReceiver())
         return new HandshakeAccept({
-          sender: new Sender({ sendKey }),
+          sender: { sendKey },
           receiver,
           acceptMessage: {
             token: bufferToString(handshakePublic, 'base64'),
