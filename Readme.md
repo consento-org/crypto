@@ -32,6 +32,16 @@ const cryptoFriends = setup(friends) // sodium-universal variant of crypto
 const cryptoSodium = setup(sodium) // libsodium.js variant of crypto
 ```
 
+## Vocabulary
+
+- `Channel` - an e2e encrypted setup consisting of one `Receiver` and one `Sender`
+- `Sender` - an object containing the keys that allow to encrypt data
+- `Receiver` - an object containing the keys that allow to decrypt data created by the `Sender`
+- `Connection` - an e2e encrypted setup consisting of the `Receiver` of one channel and the `Sender` of another.
+- `Annonymous` - an object describing an the capability to verify if a message is part of a `Channel`
+- `Blob` - a self-contained piece of data, like an image or pdf.
+- `Handshake` - the process to connect two separate processes/devices resulting in a `Connection` for each process.
+
 ## Sending/Receiving encrypted messages
 
 The crypto library contains useful primitives for sending e2e encrypted messages through public channels.
