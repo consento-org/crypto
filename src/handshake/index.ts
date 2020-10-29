@@ -22,7 +22,7 @@ function processHandshake (msg: Uint8Array): {
   }
 }
 
-export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, Receiver, Connection }: ICryptoPrimitives): ICryptoHandshake {
+export function setupHandshake (crypto: ICryptoCore, { createChannel, Sender, Receiver, Connection }: ICryptoPrimitives): ICryptoHandshake {
   class HandshakeInit implements IHandshakeInit {
     receiver: IReceiver
     firstMessage: Uint8Array
@@ -46,7 +46,7 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
       return await wrapTimeout(async signal => {
         const cp = checkpoint(signal)
         const secretKey = await cp(crypto.computeSecret(this.handshakeSecret, Buffer.from(accept.token, 'base64')))
-        const bob = await cp(createReceiver())
+        const bob = await cp(createChannel())
         const sendKey = await cp(crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64')))
         if (!(sendKey instanceof Uint8Array)) {
           throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${sendKey.constructor.name}`), { code: 'invalid-message', sendKey })
@@ -111,7 +111,7 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
     async initHandshake (opts?: ITimeoutOptions): Promise<HandshakeInit> {
       return await wrapTimeout(async signal => {
         const cp = checkpoint(signal)
-        const { receiver, sender } = await cp(createReceiver())
+        const { receiver, sender } = await cp(createChannel())
         const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
         return new HandshakeInit({
           receiver,
@@ -133,7 +133,7 @@ export function setupHandshake (crypto: ICryptoCore, { createReceiver, Sender, R
         const cp = checkpoint(signal)
         const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
         const secretKey = await cp(crypto.computeSecret(handshakeSecret, token))
-        const { receiver, sender } = await cp(createReceiver())
+        const { receiver, sender } = await cp(createChannel())
         return new HandshakeAccept({
           sender: { sendKey },
           receiver,
