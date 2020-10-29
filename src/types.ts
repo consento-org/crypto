@@ -44,6 +44,7 @@ export interface ISender extends IChannelId {
   readonly annonymous: IAnnonymous
   sign(data: Uint8Array): Promise<Uint8Array>
   encrypt(message: IEncodable): Promise<IEncryptedMessage>
+  encryptOnly(message: IEncodable): Promise<Uint8Array>
 }
 
 export interface IReceiverJSON {

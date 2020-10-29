@@ -161,5 +161,10 @@ for (const { name, crypto } of cores) {
       // eslint-disable-next-line @typescript-eslint/no-base-to-string
       expect(annonymous.toString()).toBe(`Annonymous[id=${annonymous.idBase64}]`)
     })
+
+    it('encrypt with out signing', async () => {
+      const { sender, receiver } = await createChannel()
+      expect(await receiver.decrypt(await sender.encryptOnly('hello world'))).toEqual({ body: 'hello world' })
+    })
   })
 }

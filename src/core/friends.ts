@@ -68,6 +68,12 @@ function sign (signSecretKey: Uint8Array, body: Uint8Array): Uint8Array {
 function verify (signPublicKey: Uint8Array, signature: Uint8Array, body: Uint8Array): boolean {
   return crypto_sign_verify_detached(signature, body, signPublicKey)
 }
+function encryptMessage (writeKey: Uint8Array, message: IEncodable): Uint8Array {
+  const msgBuffer = anyToBuffer(message)
+  const body = sodium_malloc(msgBuffer.length + crypto_box_SEALBYTES)
+  crypto_box_seal(body, msgBuffer, writeKey)
+  return body
+}
 
 export const friends: ICryptoCore = {
   /* eslint @typescript-eslint/require-await: "off" */
@@ -101,14 +107,20 @@ export const friends: ICryptoCore = {
     }
     return bufferToAny(decrypted)
   },
-  async decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage): Promise<IDecryption> {
-    if (!verify(verifyKey, message.signature, message.body)) {
-      return {
-        error: EDecryptionError.invalidSignature
+  async decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): Promise<IDecryption> {
+    let bodyIn: Uint8Array
+    if (message instanceof Uint8Array) {
+      bodyIn = message
+    } else {
+      bodyIn = message.body
+      if (!await verify(verifyKey, message.signature, bodyIn)) {
+        return {
+          error: EDecryptionError.invalidSignature
+        }
       }
     }
-    const messageDecrypted = sodium_malloc(message.body.length - crypto_box_SEALBYTES)
-    const successful = crypto_box_seal_open(messageDecrypted, message.body, writeKey, readKey)
+    const messageDecrypted = sodium_malloc(bodyIn.length - crypto_box_SEALBYTES)
+    const successful = crypto_box_seal_open(messageDecrypted, bodyIn, writeKey, readKey)
     if (!successful) {
       return {
         error: EDecryptionError.invalidEncryption
@@ -118,10 +130,11 @@ export const friends: ICryptoCore = {
       body: bufferToAny(messageDecrypted)
     }
   },
-  async encryptMessage (signKey: Uint8Array, writeKey: Uint8Array, message: IEncodable) {
-    const msgBuffer = anyToBuffer(message)
-    const body = sodium_malloc(msgBuffer.length + crypto_box_SEALBYTES)
-    crypto_box_seal(body, msgBuffer, writeKey)
+  async encryptMessage (writeKey: Uint8Array, message: IEncodable): Promise<Uint8Array> {
+    return encryptMessage(writeKey, message)
+  },
+  async encryptAndSignMessage (signKey: Uint8Array, writeKey: Uint8Array, message: IEncodable): Promise<IEncryptedMessage> {
+    const body = encryptMessage(writeKey, message)
     return {
       signature: sign(signKey, body),
       body

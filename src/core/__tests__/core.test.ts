@@ -19,7 +19,7 @@ for (const { name, crypto } of cores) {
   }
 
   const senderEncryptMessage = async (annonymous: IRawKeys, encryptKeys: IRawKeys, message: any): Promise<IEncryptedMessage> => {
-    return await crypto.encryptMessage(annonymous.privateKey, encryptKeys.publicKey, message)
+    return await crypto.encryptAndSignMessage(annonymous.privateKey, encryptKeys.publicKey, message)
   }
 
   const receiverDecryptMessage = async (annonymous: IRawKeys, encryptKeys: IRawKeys, message: IEncryptedMessage): Promise<IEncodable> => {

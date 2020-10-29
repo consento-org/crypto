@@ -177,8 +177,12 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
       return await crypto.sign(this.signKey, data)
     }
 
+    async encryptOnly (message: IEncodable): Promise<Uint8Array> {
+      return await crypto.encryptMessage(this.encryptKey, message)
+    }
+
     async encrypt (message: IEncodable): Promise<IEncryptedMessage> {
-      return await crypto.encryptMessage(this.signKey, this.encryptKey, message)
+      return await crypto.encryptAndSignMessage(this.signKey, this.encryptKey, message)
     }
   }
 

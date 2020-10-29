@@ -94,6 +94,18 @@ but only senders are able to encrypt messages.
 const encrypted: IEncryptedMessage = await sender.encrypt(message)
 ```
 
+you can also encrypt a message without signing.
+
+```javascript
+const encrypted: Uint8Array = await sender.encryptOnly(message)
+```
+
+and decrypt this message:
+
+```javascript
+const message = await sender.decrypt(uint8Array)
+```
+
 ### De-/Serialization
 
 The default created Sender/Receiver/Annonymous instances can be serialized/deserialized

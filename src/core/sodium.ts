@@ -43,6 +43,12 @@ async function verify (signPublicKey: Uint8Array, signature: Uint8Array, body: U
   return crypto_sign_verify_detached(assertUint8(signature), assertUint8(body), assertUint8(signPublicKey))
 }
 
+async function encryptMessage (writeKey: Uint8Array, message: IEncodable): Promise<Uint8Array> {
+  const { crypto_box_seal } = await libsodium
+  const msgBuffer = anyToBuffer(message)
+  return crypto_box_seal(msgBuffer, writeKey)
+}
+
 const deriveContext = 'conotify'
 
 export const sodium: ICryptoCore = {
@@ -52,15 +58,20 @@ export const sodium: ICryptoCore = {
   },
   sign,
   verify,
-  async decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage): Promise<IDecryption> {
-    const bodyIn = assertUint8(message.body)
-    if (!await verify(verifyKey, message.signature, bodyIn)) {
-      return {
-        error: EDecryptionError.invalidSignature
+  async decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): Promise<IDecryption> {
+    let bodyIn: Uint8Array
+    if (message instanceof Uint8Array) {
+      bodyIn = message
+    } else {
+      bodyIn = assertUint8(message.body)
+      if (!await verify(verifyKey, message.signature, bodyIn)) {
+        return {
+          error: EDecryptionError.invalidSignature
+        }
       }
     }
     const { crypto_box_seal_open } = await libsodium
-    const messageDecrypted = crypto_box_seal_open(message.body, writeKey, readKey)
+    const messageDecrypted = crypto_box_seal_open(bodyIn, writeKey, readKey)
     if (messageDecrypted === null) {
       return {
         error: EDecryptionError.invalidEncryption
@@ -87,10 +98,9 @@ export const sodium: ICryptoCore = {
     const [nonce, ciphertext] = split(encrypted, crypto_secretbox_NONCEBYTES)
     return bufferToAny(crypto_secretbox_open_easy(ciphertext, nonce, secretKey))
   },
-  async encryptMessage (signKey: Uint8Array, writeKey: Uint8Array, message: IEncodable): Promise<IEncryptedMessage> {
-    const { crypto_box_seal } = await libsodium
-    const msgBuffer = anyToBuffer(message)
-    const body = crypto_box_seal(msgBuffer, writeKey)
+  encryptMessage,
+  async encryptAndSignMessage (signKey: Uint8Array, writeKey: Uint8Array, message: IEncodable): Promise<IEncryptedMessage> {
+    const body = await encryptMessage(writeKey, message)
     return {
       signature: await sign(signKey, body),
       body
