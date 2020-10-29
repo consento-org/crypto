@@ -186,6 +186,7 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
     _receiveKey?: Uint8Array
     _receiveKeyBase64?: string
     _sender?: ISender
+    _decryptKey?: Uint8Array
 
     constructor ({ receiveKey }: IReceiverOptions) {
       if (typeof receiveKey === 'string') {
@@ -223,7 +224,10 @@ export function setupPrimitives (crypto: ICryptoCore): ICryptoPrimitives {
     }
 
     get decryptKey (): Uint8Array {
-      return decryptKeyFromReceiveKey(this.receiveKey)
+      if (this._decryptKey === undefined) {
+        this._decryptKey = decryptKeyFromReceiveKey(this.receiveKey)
+      }
+      return this._decryptKey
     }
 
     get receiveKey (): Uint8Array {
