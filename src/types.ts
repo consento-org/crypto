@@ -1,10 +1,25 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
-import { IEncryptedMessage, IDecryption } from './core/types'
-import { IEncodable, IStringOrBuffer, ITimeoutOptions } from './util/types'
+import { IEncodable, IStringOrBuffer } from './util/types'
 
-export * from './core/types'
+export interface IEncryptedMessage {
+  signature: Uint8Array
+  body: Uint8Array
+}
 
-export { IEncryptedMessage, IDecryption }
+export enum EDecryptionError {
+  invalidEncryption = 'invalid-encryption',
+  invalidSignature = 'invalid-signature'
+}
+
+export interface IDecryptionError {
+  error: EDecryptionError
+}
+
+export interface IDecryptionSuccess {
+  body: IEncodable
+}
+
+export type IDecryption = IDecryptionSuccess | IDecryptionError
 
 export interface IAnnonymousJSON {
   id: string
@@ -22,8 +37,8 @@ export interface IChannelId {
 
 export interface IAnnonymous extends IChannelId {
   toJSON(): IAnnonymousJSON
-  verify(signature: Uint8Array, body: Uint8Array): Promise<boolean>
-  verifyMessage(message: IEncryptedMessage): Promise<boolean>
+  verify(signature: Uint8Array, body: Uint8Array): boolean
+  verifyMessage(message: IEncryptedMessage): boolean
 }
 
 export interface ISenderJSON {
@@ -41,9 +56,9 @@ export interface ISender extends IChannelId {
   readonly encryptKey: Uint8Array
   readonly signKey: Uint8Array
   readonly annonymous: IAnnonymous
-  sign(data: Uint8Array): Promise<Uint8Array>
-  encrypt(message: IEncodable): Promise<IEncryptedMessage>
-  encryptOnly(message: IEncodable): Promise<Uint8Array>
+  sign(data: Uint8Array): Uint8Array
+  encrypt(message: IEncodable): IEncryptedMessage
+  encryptOnly(message: IEncodable): Uint8Array
 }
 
 export interface IReceiverJSON {
@@ -64,7 +79,7 @@ export interface IReceiver extends IChannelId {
    *
    * @param encrypted signed or unsigned message
    */
-  decrypt(encrypted: IEncryptedMessage | Uint8Array): Promise<IDecryption>
+  decrypt(encrypted: IEncryptedMessage | Uint8Array): IDecryption
 }
 
 export type ComType = 'channel' | 'connection'
@@ -113,7 +128,7 @@ export interface IHandshakeInit {
   firstMessage: Uint8Array
   handshakeSecret: Uint8Array
   toJSON(): IHandshakeInitJSON
-  confirm(acceptMessage: IHandshakeAcceptMessage, opts?: ITimeoutOptions): Promise<IHandshakeConfirmation>
+  confirm(acceptMessage: IHandshakeAcceptMessage): IHandshakeConfirmation
 }
 
 export interface IHandshakeAcceptMessage {
@@ -132,7 +147,7 @@ export interface IHandshakeAcceptOptions extends IConnectionOptions {
 export interface IHandshakeAccept extends IConnection {
   acceptMessage: IHandshakeAcceptMessage
   toJSON(): IHandshakeAcceptJSON
-  finalize(message: Uint8Array, opts?: ITimeoutOptions): Promise<IConnection>
+  finalize(message: Uint8Array): IConnection
 }
 
 export interface IHandshakeConfirmationOptions {
@@ -151,25 +166,6 @@ export interface IHandshakeConfirmation {
   toJSON(): IHandshakeConfirmationJSON
 }
 
-export interface ICryptoPrimitives {
-  createChannel(opts?: ITimeoutOptions): Promise<IChannel>
-  Annonymous: new (opts: IAnnonymousOptions) => IAnnonymous
-  Receiver: new (opts: IReceiverOptions) => IReceiver
-  Sender: new (opts: ISenderOptions) => ISender
-  Connection: new (opts: IConnectionOptions) => IConnection
-  Channel: new (opts: IChannelOptions) => IChannel
-}
-
-export interface ICryptoHandshake {
-  initHandshake(opts?: ITimeoutOptions): Promise<IHandshakeInit>
-  acceptHandshake(message: Uint8Array, opts?: ITimeoutOptions): Promise<IHandshakeAccept>
-  HandshakeInit: new (opts: IHandshakeInitOptions) => IHandshakeInit
-  HandshakeAccept: new (opts: IHandshakeAcceptOptions) => IHandshakeAccept
-  HandshakeConfirmation: new (opts: IHandshakeConfirmationOptions) => IHandshakeConfirmation
-}
-
-export type IConsentoCrypto = ICryptoPrimitives & ICryptoHandshake
-
 export interface IEncryptedBlob {
   secretKey: Uint8Array
   size?: number
@@ -181,12 +177,4 @@ export interface IEncryptedBlobJSON {
   secretKey: string
   size?: number
   path: string[]
-}
-
-export interface IEncryptedBlobAPI {
-  encryptBlob (encodable: IEncodable, opts?: ITimeoutOptions): Promise<{ blob: IEncryptedBlob, encrypted: Uint8Array }>
-  decryptBlob (secretKey: Uint8Array, encrypted: Uint8Array, opts?: ITimeoutOptions): Promise<IEncodable>
-  isEncryptedBlob (input: any): input is IEncryptedBlob
-  toEncryptedBlob (secretKey: string | Uint8Array): Promise<IEncryptedBlob>
-  toEncryptedBlob (blob: IEncryptedBlob | IEncryptedBlobJSON): IEncryptedBlob
 }

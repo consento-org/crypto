@@ -1,2 +1,5 @@
-export { setup } from './setup'
+export * from './primitives'
+export * from './handshake'
+export * from './blob'
+export * from './util'
 export * from './types'

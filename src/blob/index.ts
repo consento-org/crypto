@@ -1,15 +1,33 @@
-import { ICryptoCore } from '../core/types'
-import { IEncryptedBlobAPI, IEncryptedBlob, IEncryptedBlobJSON } from '../types'
+import { IEncryptedBlob, IEncryptedBlobJSON } from '../types'
 import { bufferToString } from '../util/buffer'
-import { Buffer, IEncodable, ITimeoutOptions } from '../util/types'
-import { wrapTimeout, checkpoint } from '../util/abort'
+import { Buffer, IEncodable } from '../util/types'
+import { encrypt, decrypt, createSecret } from '../util/secretbox'
+import * as sodium from 'sodium-universal'
 
-async function pathForSecretKey (cryptoCore: ICryptoCore, secretKey: Uint8Array): Promise<string[]> {
-  const locationKey = await cryptoCore.deriveKdfKey(secretKey)
+const {
+  crypto_kdf_CONTEXTBYTES: CRYPTO_KDF_CONTEXTBYTES,
+  crypto_kdf_BYTES_MAX: CRYPTO_KDF_BYTES_MAX,
+  crypto_kdf_derive_from_key: kdfDeriveFromKey,
+  sodium_malloc: malloc
+} = sodium.default
+
+const deriveContext = Buffer.from('conotify')
+if (deriveContext.length !== CRYPTO_KDF_CONTEXTBYTES) {
+  throw new Error(`sodium context bytesize changed, we are in trouble! ${deriveContext.length} != ${CRYPTO_KDF_CONTEXTBYTES}`)
+}
+
+function deriveKdfKey (key: Uint8Array, index: number = 1): Uint8Array {
+  const derivedKey = malloc(CRYPTO_KDF_BYTES_MAX)
+  kdfDeriveFromKey(derivedKey, index, deriveContext, key)
+  return derivedKey
+}
+
+function pathForSecretKey (secretKey: Uint8Array): string[] {
+  const locationKey = deriveKdfKey(secretKey)
   return bufferToString(locationKey, 'hex').substr(0, 16).split(/(.{4})/).filter(Boolean)
 }
 
-function isEncryptedBlob (input: any): input is IEncryptedBlob {
+export function isEncryptedBlob (input: any): input is IEncryptedBlob {
   if (typeof input !== 'object' || input === null) {
     return false
   }
@@ -51,44 +69,33 @@ function newBlob (secretKey: Uint8Array, path: string[], size?: number): IEncryp
   }
 }
 
-async function _toBlob (crypto: ICryptoCore, input: Uint8Array): Promise<IEncryptedBlob> {
-  const path = await pathForSecretKey(crypto, input)
-  return newBlob(input, path)
+function _toBlob (input: Uint8Array): IEncryptedBlob {
+  return newBlob(input, pathForSecretKey(input))
 }
 
-export function setupBlob (crypto: ICryptoCore): IEncryptedBlobAPI {
-  function toEncryptedBlob (input: string | Uint8Array): Promise<IEncryptedBlob>
-  function toEncryptedBlob (input: IEncryptedBlobJSON | IEncryptedBlob): IEncryptedBlob
-  // eslint-disable-next-line @typescript-eslint/promise-function-async
-  function toEncryptedBlob (input: string | Uint8Array | IEncryptedBlob | IEncryptedBlobJSON): Promise<IEncryptedBlob> | IEncryptedBlob {
-    if (typeof input === 'string') {
-      return _toBlob(crypto, Buffer.from(input, 'hex'))
-    }
-    if (input instanceof Uint8Array) {
-      return _toBlob(crypto, input)
-    }
-    if (isEncryptedBlobJSON(input)) {
-      return newBlob(Buffer.from(input.secretKey, 'base64'), input.path.concat(), input.size)
-    }
-    return input
+export function toEncryptedBlob (input: string | Uint8Array | IEncryptedBlob | IEncryptedBlobJSON): IEncryptedBlob {
+  if (typeof input === 'string') {
+    return _toBlob(Buffer.from(input, 'hex'))
   }
+  if (input instanceof Uint8Array) {
+    return _toBlob(input)
+  }
+  if (isEncryptedBlobJSON(input)) {
+    return newBlob(Buffer.from(input.secretKey, 'base64'), input.path.concat(), input.size)
+  }
+  return input
+}
+
+export function encryptBlob (encodable: IEncodable): { blob: IEncryptedBlob, encrypted: Uint8Array } {
+  const secretKey = createSecret()
+  const path = pathForSecretKey(secretKey)
+  const encrypted = encrypt(secretKey, encodable)
   return {
-    async encryptBlob (encodable: IEncodable, opts?: ITimeoutOptions): Promise<{ blob: IEncryptedBlob, encrypted: Uint8Array }> {
-      return await wrapTimeout(async signal => {
-        const cp = checkpoint(signal)
-        const secretKey = await cp(crypto.createSecretKey())
-        const path = await cp(pathForSecretKey(crypto, secretKey))
-        const encrypted = await cp(crypto.encrypt(secretKey, encodable))
-        return {
-          blob: newBlob(secretKey, path, encrypted.length),
-          encrypted
-        }
-      }, opts)
-    },
-    async decryptBlob (secretKey: Uint8Array, encrypted: Uint8Array, _?: ITimeoutOptions): Promise<IEncodable> {
-      return await crypto.decrypt(secretKey, encrypted)
-    },
-    isEncryptedBlob,
-    toEncryptedBlob
+    blob: newBlob(secretKey, path, encrypted.length),
+    encrypted
   }
+}
+
+export function decryptBlob (secretKey: Uint8Array, encrypted: Uint8Array): IEncodable {
+  return decrypt(secretKey, encrypted)
 }
