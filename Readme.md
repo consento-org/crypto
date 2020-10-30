@@ -15,11 +15,11 @@ for all data types.
 
 ## Vocabulary
 
-- `Channel` - an e2e encrypted setup consisting of one `Receiver` and one `Sender`
-- `Sender` - an object containing the keys that allow to encrypt data
-- `Receiver` - an object containing the keys that allow to decrypt data created by the `Sender`
+- `Channel` - an e2e encrypted setup consisting of one `Reader` and one `Writer`
+- `Writer` - an object containing the keys that allow to encrypt data - it can _write_ on that Channel - it can not read the data!
+- `Reader` - an object containing the keys that allow to decrypt data - it can _read_ on that Channel - it can not write to it!
+- `Verifier` - an object describing an the capability to verify if a message is part of a `Channel` without being able to read it.
 - `Connection` - an e2e encrypted setup consisting of the `Receiver` of one channel and the `Sender` of another.
-- `Annonymous` - an object describing an the capability to verify if a message is part of a `Channel`
 - `Blob` - a self-contained piece of data, like an image or pdf.
 - `Handshake` - the process to connect two separate processes/devices resulting in a `Connection` for each process.
 
@@ -29,10 +29,10 @@ The crypto library contains useful primitives for sending e2e encrypted messages
 
 ```javascript
 const { createChannel } = require('@consento/crypto')
-const { receiver, sender } = createChannel()
+const { writer, reader } = createChannel()
 
-const encrypted = sender.encrypt('hello world')
-const decrypted = receiver.decrypt(encrypted)
+const encrypted = writer.encrypt('hello world')
+const decrypted = reader.decrypt(encrypted)
 
 decrypted.body === 'hello world'
 ```
@@ -41,58 +41,56 @@ You can create a new communication channel with the simple `createChannel` metho
 
 ```javascript
 const channel = createChannel()
-const { receiver } = channel // Can decrypt messages; _could_ encrypt messages, but these would not be signed and rejected!
-const { sender } = channel // Can only encrypt messages.
-const { annonymous } = channel // Object that can verify messages but not de-/encrypt messages.
+const { reader } = channel // Can decrypt messages; _could_ encrypt messages, but these would not be signed and rejected!
+const { writer } = channel // Can only encrypt messages.
+const { verifier } = channel // Object that can verify messages but not de-/encrypt messages.
 
-receiver.receiveKey // To backup/restore the receiver
-sender.sendKey // To backup/restore the sender
-annonymous.idBase64 === receiver.idBase64 === sender.idBase64 // The lookup id is same here
+reader.readerKey // To backup/restore the receiver
+writer.senderKey // To backup/restore the sender
+reader.channelKeyBase64 === writer.channelKeyBase64 === verifier.channelKeyBase64
+// The lookup id is same here, the channelKey may be used to verify the data, can also be used for the channel
 
-sender.encryptKey === receiver.encryptKey // Key to encrypt messages
+writer.signKey // Allows the writer to sign messages, only privy to the writer
+reader.decryptKey // Allows the reader to decrypt messages, only privy to the reader
 
-receiver.decryptKey // Allows the receiver to decrypt messages
-sender.signKey // Allows the sender to sign messages
-
-receiver.receiveKey // allows decryption of messages
-receiver.annonymous.id // public channel id - can be shared with other people - also used to verify if a message was properly sent.
-receiver.id // shortcut on the sender for the channel id
+writer.encryptKey.equals(receiver.encryptKey) // Key to encrypt messages, receiver _can_ write but not sign the message, thus it exists pro-forma
 ```
 
 All objects create with `createChannel` are well de-/serializable:
 
 ```javascript
-const { createChannel, Receiver, Sender, Annonymous } = require('@consento/crypto')
-const { receiver, sender, annonymous } = createChannel()
+const { createChannel, Reader, Writer, Verifier } = require('@consento/crypto')
+const { reader, writer, verifier } = createChannel()
 
-new Receiver(receiver.toJSON())
-new Sender(sender.toJSON())
-new Annonymous(annonymous.toJSON())
+new Reader(reader.toJSON())
+new Writer(writer.toJSON())
+new Verifier(verifier.toJSON())
 ```
 
-### .annonymous
+### .verifier
 
 Both the `.sender` and the `.receiver` object have a `.annoymous` field
 to retreive an annonymous instance for the sender/receiver.
 
 ```javascript
-const { receiver, sender } = createChannel()
-receiver.annonymous.idBase64 === sender.annonymous.idBase64
+const { writer, reader } = createChannel()
+writer.verifier.verify(...)
+reader.verifier.verify(...)
 ```
 
-#### sender.encrypt(body)
+#### writer.encrypt(body)
 
 Encrypt and sign a given input with the sender key.
 
 - `body` - what you like to encrypt, any serializable object is possible
 
 ```javascript
-const encrypted = sender.encrypt('secret message')
+const encrypted = writer.encrypt('secret message')
 encrypted.signature // Uint8Array
 encrypted.body // Uint8Array
 ```
 
-#### sender.encryptOnly(body)
+#### writer.encryptOnly(body)
 
 Only encrypt the body. This is only recommended in an environment where the
 signature needs to be created at a different time!
@@ -100,11 +98,11 @@ signature needs to be created at a different time!
 - `body` - what you like to encrypt, any serializable object is possible
 
 ```javascript
-const encrypted = sender.encrypt('secret message')
+const encrypted = writer.encrypt('secret message')
 encrypted // Uint8Array with an encrypted message
 ```
 
-#### sender.sign(data)
+#### writer.sign(data)
 
 Signs a given data. This is only recommended in an environment where the
 data was encrypted at a different time!
@@ -116,7 +114,7 @@ const signature = sender.sign(sender.encryptOnly('secret message'))
 signature // Uint8Array with the signature of the encrypted message
 ```
 
-#### annonymous.verify(signature, body)
+#### verifier.verify(signature, body)
 
 Using the annonymous object we can verify a given data.
 
@@ -124,28 +122,28 @@ Using the annonymous object we can verify a given data.
 - `body` - `Uint8Array` with of the encrypted data.
 
 ```javascript
-const encrypted = sender.encrypt('hello world')
-const bool = annonymous.verify(encrypted.signature, encrypted.body)
+const encrypted = writer.encrypt('hello world')
+const bool = verifier.verify(encrypted.signature, encrypted.body)
 ```
 
-#### annonymous.verifyMessage(message)
+#### verifier.verifyMessage(message)
 
 As a short-cut its also possible to just verify a message
 
 - `message` - `{ signature: Uint8Array, body: Uint8Array }`
 
 ```javascript
-const bool = annonymous.verifyMessage(message)
+const bool = verifier.verifyMessage(message)
 ```
 
-#### receiver.decrypt(encrypted)
+#### reader.decrypt(encrypted)
 
 Get the content of a once encrypted message.
 
-- `encrypted` - `{ signature: Uint8Array, body: Uint8Array }` as created by `sender.encrypt` or `Uint8Array` created with `sender.encryptOnly`
+- `encrypted` - `{ signature: Uint8Array, body: Uint8Array }` as created by `writer.encrypt` or `Uint8Array` created with `writer.encryptOnly`
 
 ```javascript
-const message = receiver.decrypt(message:)
+const message = reader.decrypt(message:)
 ```
 
 ## Creating a handshake

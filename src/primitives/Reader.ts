@@ -1,5 +1,5 @@
-import { IAnnonymous, IReceiver, IReceiverJSON, IEncryptedMessage, IReceiverOptions, IDecryption, EDecryptionError } from '../types'
-import { Annonymous } from './Annonymous'
+import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions, IDecryption, EDecryptionError } from '../types'
+import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, decryptKeyFromReceiveKey, verifyKeyFromSendOrReceiveKey } from './key'
 import { bufferToAny, bufferToString, toBuffer } from '../util'
 import * as sodium from 'sodium-universal'
@@ -35,14 +35,14 @@ function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: U
   }
 }
 
-export class Receiver implements IReceiver {
+export class Reader implements IReader {
   _receiveKey?: Uint8Array
   _receiveKeyBase64?: string
   _decryptKey?: Uint8Array
   _encryptKey?: Uint8Array
-  _annonymous?: IAnnonymous
+  _annonymous?: IVerifier
 
-  constructor ({ receiveKey }: IReceiverOptions) {
+  constructor ({ readerKey: receiveKey }: IReaderOptions) {
     if (typeof receiveKey === 'string') {
       this._receiveKeyBase64 = receiveKey
     } else {
@@ -50,64 +50,64 @@ export class Receiver implements IReceiver {
     }
   }
 
-  get id (): Uint8Array {
-    return this.annonymous.id
+  get channelKey (): Uint8Array {
+    return this.verifier.channelKey
   }
 
-  get idHex (): string {
-    return this.annonymous.idHex
+  get channelKeyHex (): string {
+    return this.verifier.channelKeyHex
   }
 
-  get idBase64 (): string {
-    return this.annonymous.idBase64
+  get channelKeyBase64 (): string {
+    return this.verifier.channelKeyBase64
   }
 
   get encryptKey (): Uint8Array {
     if (this._encryptKey === undefined) {
-      this._encryptKey = encryptKeyFromSendOrReceiveKey(this.receiveKey)
+      this._encryptKey = encryptKeyFromSendOrReceiveKey(this.readerKey)
     }
     return this._encryptKey
   }
 
-  get annonymous (): IAnnonymous {
+  get verifier (): IVerifier {
     if (this._annonymous === undefined) {
-      this._annonymous = new Annonymous({ id: verifyKeyFromSendOrReceiveKey(this.receiveKey) })
+      this._annonymous = new Verifier({ channelKey: verifyKeyFromSendOrReceiveKey(this.readerKey) })
     }
     return this._annonymous
   }
 
   get decryptKey (): Uint8Array {
     if (this._decryptKey === undefined) {
-      this._decryptKey = decryptKeyFromReceiveKey(this.receiveKey)
+      this._decryptKey = decryptKeyFromReceiveKey(this.readerKey)
     }
     return this._decryptKey
   }
 
-  get receiveKey (): Uint8Array {
+  get readerKey (): Uint8Array {
     if (this._receiveKey === undefined) {
       this._receiveKey = toBuffer(this._receiveKeyBase64 as unknown as string)
     }
     return this._receiveKey
   }
 
-  get receiveKeyBase64 (): string {
+  get readerKeyBase64 (): string {
     if (this._receiveKeyBase64 === undefined) {
       this._receiveKeyBase64 = bufferToString(this._receiveKey as unknown as Uint8Array, 'base64')
     }
     return this._receiveKeyBase64
   }
 
-  toJSON (): IReceiverJSON {
-    return { receiveKey: this.receiveKeyBase64 }
+  toJSON (): IReaderJSON {
+    return { readerKey: this.readerKeyBase64 }
   }
 
   toString (): string {
-    return `Receiver[id=${this.idBase64}]`
+    return `Reader[${this.channelKeyBase64}]`
   }
 
   decrypt (encrypted: IEncryptedMessage): IDecryption {
     return decryptMessage(
-      this.annonymous.id,
+      this.verifier.channelKey,
       this.encryptKey,
       this.decryptKey,
       encrypted

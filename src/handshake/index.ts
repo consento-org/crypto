@@ -1,6 +1,6 @@
 import { Buffer, toBuffer, bufferToString } from '../util'
-import { IHandshakeInit, IReceiver, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
-import { createChannel, Receiver, Sender, Connection } from '../primitives'
+import { IHandshakeInit, IReader, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
+import { createChannel, Reader, Writer, Connection } from '../primitives'
 import { randomBuffer } from '../util/randomBuffer'
 import { decrypt, encrypt } from '../util/secretbox'
 import * as sodium from 'sodium-universal'
@@ -43,12 +43,12 @@ function processHandshake (msg: Uint8Array): {
 }
 
 export class HandshakeInit implements IHandshakeInit {
-  receiver: IReceiver
+  receiver: IReader
   firstMessage: Uint8Array
   handshakeSecret: Uint8Array
 
   constructor ({ receiver, handshakeSecret, firstMessage }: IHandshakeInitOptions) {
-    this.receiver = new Receiver(receiver)
+    this.receiver = new Reader(receiver)
     this.handshakeSecret = toBuffer(handshakeSecret)
     this.firstMessage = toBuffer(firstMessage)
   }
@@ -68,17 +68,17 @@ export class HandshakeInit implements IHandshakeInit {
     if (!(sendKey instanceof Uint8Array)) {
       throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${sendKey.constructor.name}`), { code: 'invalid-message', sendKey })
     }
-    const aliceSender = new Sender({ sendKey })
+    const aliceSender = new Writer({ writerKey: sendKey })
     return new HandshakeConfirmation({
       connection: new Connection({
-        sender: aliceSender,
-        receiver: backChannel.receiver
+        writer: aliceSender,
+        reader: backChannel.reader
       }),
       // In case you are wondering why we not just simply return "backChannel" as sender
       // but instead pass it in two messages: the reason is that without this step
       // the API is clearer.
       // TODO: rethink
-      finalMessage: backChannel.sender.sendKey
+      finalMessage: backChannel.writer.writerKey
     })
   }
 }
@@ -100,8 +100,8 @@ export class HandshakeAccept extends Connection implements IHandshakeAccept {
 
   finalize (message: Uint8Array): IConnection {
     return new Connection({
-      receiver: this.receiver,
-      sender: new Sender({ sendKey: message })
+      reader: this.reader,
+      writer: new Writer({ writerKey: message })
     })
   }
 }
@@ -124,7 +124,7 @@ export class HandshakeConfirmation implements IHandshakeConfirmation {
 }
 
 export function initHandshake (): HandshakeInit {
-  const { receiver, sender } = createChannel()
+  const { reader: receiver, writer: sender } = createChannel()
   const handshake = createHandshake()
   return new HandshakeInit({
     receiver,
@@ -132,7 +132,7 @@ export function initHandshake (): HandshakeInit {
     firstMessage: Buffer.concat([
       HANDSHAKE_MSG_VERSION,
       handshake.publicKey,
-      sender.sendKey
+      sender.writerKey
     ])
   })
 }
@@ -144,13 +144,13 @@ export function acceptHandshake (firstMessage: Uint8Array): IHandshakeAccept {
   } = processHandshake(firstMessage)
   const handshake = createHandshake()
   const secretKey = computeSecret(handshake.secretKey, token)
-  const { receiver, sender } = createChannel()
+  const { reader: receiver, writer: sender } = createChannel()
   return new HandshakeAccept({
-    sender: { sendKey },
-    receiver,
+    writer: { writerKey: sendKey },
+    reader: receiver,
     acceptMessage: {
       token: bufferToString(handshake.publicKey, 'base64'),
-      secret: bufferToString(encrypt(secretKey, sender.sendKey), 'base64')
+      secret: bufferToString(encrypt(secretKey, sender.writerKey), 'base64')
     }
   })
 }

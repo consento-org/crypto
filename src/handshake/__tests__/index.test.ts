@@ -1,14 +1,14 @@
-import { IReceiver, ISender, IEncryptedMessage, IHandshakeAcceptMessage } from '../../types'
+import { IReader, IWriter, IEncryptedMessage, IHandshakeAcceptMessage } from '../../types'
 import { IEncodable } from '../../util/types'
 import { exists } from '../../util'
 import { initHandshake, acceptHandshake, HandshakeAccept, HandshakeInit, HandshakeConfirmation } from '..'
 
 const channels: { [key: string]: (msg: IEncryptedMessage) => void } = {}
 
-function listenTo (receiver: IReceiver, handler: (msg: IEncodable, unlisten?: () => void) => any): () => void {
+function listenTo (receiver: IReader, handler: (msg: IEncodable, unlisten?: () => void) => any): () => void {
   const unlisten = (): any => {
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-    delete channels[receiver.annonymous.idHex]
+    delete channels[receiver.verifier.channelKeyHex]
   }
   const handlerRaw = (msg: IEncryptedMessage): void => {
     const decryption = receiver.decrypt(msg)
@@ -18,10 +18,10 @@ function listenTo (receiver: IReceiver, handler: (msg: IEncodable, unlisten?: ()
       throw new Error(decryption.error)
     }
   }
-  channels[receiver.annonymous.idHex] = handlerRaw
+  channels[receiver.verifier.channelKeyHex] = handlerRaw
   return unlisten
 }
-function listenOnce (receiver: IReceiver, handler: (msg: IEncodable) => any): () => void {
+function listenOnce (receiver: IReader, handler: (msg: IEncodable) => any): () => void {
   return listenTo(receiver, (msg, unlisten) => {
     if (exists(unlisten)) {
       unlisten()
@@ -29,8 +29,8 @@ function listenOnce (receiver: IReceiver, handler: (msg: IEncodable) => any): ()
     handler(msg)
   })
 }
-function sendTo (sender: ISender, msg: IEncodable): void {
-  const { annonymous: { idHex } } = sender
+function sendTo (sender: IWriter, msg: IEncodable): void {
+  const { verifier: { channelKeyHex: idHex } } = sender
   if (channels[idHex] === undefined) {
     throw new Error(`Unknown channel ${idHex}`)
   }
@@ -58,7 +58,7 @@ describe('Handshake', () => {
     const alice = initHandshake()
     listenOnce(alice.receiver, (acceptMessage): void => {
       counter.next(2)
-      const { connection: { sender, receiver }, finalMessage } = alice.confirm(acceptMessage as IHandshakeAcceptMessage)
+      const { connection: { writer: sender, reader: receiver }, finalMessage } = alice.confirm(acceptMessage as IHandshakeAcceptMessage)
       listenOnce(receiver, message => {
         counter.next(4)
         expect(message).toBe('Hello Alice')
@@ -69,16 +69,16 @@ describe('Handshake', () => {
 
     // BOB
     const bob = acceptHandshake(alice.firstMessage)
-    listenOnce(bob.receiver, (finalMessage): void => {
+    listenOnce(bob.reader, (finalMessage): void => {
       counter.next(3)
-      const { sender, receiver } = bob.finalize(finalMessage as Uint8Array)
+      const { writer: sender, reader: receiver } = bob.finalize(finalMessage as Uint8Array)
       listenOnce(receiver, (msg): void => {
         counter.next(5)
         expect(msg).toBe('Hello Bob')
       })
       sendTo(sender, 'Hello Alice')
     })
-    sendTo(bob.sender, bob.acceptMessage)
+    sendTo(bob.writer, bob.acceptMessage)
     expect(counter.current).toBe(5)
   })
   it('serialization', () => {
@@ -90,7 +90,7 @@ describe('Handshake', () => {
       counter.next(2)
       const confirmationOriginal = alice.confirm(acceptMessage as IHandshakeAcceptMessage)
       const confirmation = new HandshakeConfirmation(confirmationOriginal.toJSON())
-      const { connection: { sender, receiver }, finalMessage } = confirmation
+      const { connection: { writer: sender, reader: receiver }, finalMessage } = confirmation
       listenOnce(receiver, message => {
         counter.next(4)
         expect(message).toBe('Hello Alice')
@@ -102,16 +102,16 @@ describe('Handshake', () => {
     // BOB
     const bobOriginal = acceptHandshake(alice.firstMessage)
     const bob = new HandshakeAccept(bobOriginal.toJSON())
-    listenOnce(bob.receiver, finalMessage => {
+    listenOnce(bob.reader, finalMessage => {
       counter.next(3)
-      const { sender, receiver } = bob.finalize(finalMessage as Uint8Array)
+      const { writer: sender, reader: receiver } = bob.finalize(finalMessage as Uint8Array)
       listenOnce(receiver, msg => {
         counter.next(5)
         expect(msg).toBe('Hello Bob')
       })
       sendTo(sender, 'Hello Alice')
     })
-    sendTo(bob.sender, bob.acceptMessage)
+    sendTo(bob.writer, bob.acceptMessage)
     expect(counter.current).toBe(5)
   })
 })
