@@ -32,89 +32,139 @@ const cryptoFriends = setup(friends) // sodium-universal variant of crypto
 const cryptoSodium = setup(sodium) // libsodium.js variant of crypto
 ```
 
+## Vocabulary
+
+- `Channel` - an e2e encrypted setup consisting of one `Receiver` and one `Sender`
+- `Sender` - an object containing the keys that allow to encrypt data
+- `Receiver` - an object containing the keys that allow to decrypt data created by the `Sender`
+- `Connection` - an e2e encrypted setup consisting of the `Receiver` of one channel and the `Sender` of another.
+- `Annonymous` - an object describing an the capability to verify if a message is part of a `Channel`
+- `Blob` - a self-contained piece of data, like an image or pdf.
+- `Handshake` - the process to connect two separate processes/devices resulting in a `Connection` for each process.
+
 ## Sending/Receiving encrypted messages
 
-The crypto library contains useful primitives for sending e2e encrypted
-messages through public channels:
-
+The crypto library contains useful primitives for sending e2e encrypted messages through public channels.
 
 ```javascript
-const { createReceiver } = setup(sodium)
+const { createChannel } = setup(sodium)
+const { receiver, sender } = createChannel()
+
+const encrypted = sender.encrypt('hello world')
+const decrypted = receiver.decrypt(encrypted)
+
+decrypted.body === 'hello world'
 ```
 
-You can create a new communication channel by creating a new receiver:
+You can create a new communication channel with the simple `createChannel` method.
 
 ```javascript
-const receiver = await createReceiver()
+const channel = await createChannel()
+const { receiver } = channel // Can decrypt messages; _could_ encrypt messages, but these would not be signed and rejected!
+const { sender } = channel // Can only encrypt messages.
+const { annonymous } = channel // Object that can verify messages but not de-/encrypt messages.
+
+receiver.receiveKey // To backup/restore the receiver
+sender.sendKey // To backup/restore the sender
+annonymous.idBase64 === receiver.idBase64 === sender.idBase64 // The lookup id is same here
+
+sender.encryptKey === receiver.encryptKey // Key to encrypt messages
+
+receiver.decryptKey // Allows the receiver to decrypt messages
+sender.signKey // Allows the sender to sign messages
+
 receiver.receiveKey // allows decryption of messages
-receiver.sender.sendKey // encryption key for sending messages
-receiver.sender.annonymous.id // public channel id - can be shared with other people - also used to verify if a message was properly sent.
-receiver.sender.id // shortcut on the sender for the channel id
-receiver.id // shortcut on the receiver for the channel id
+receiver.annonymous.id // public channel id - can be shared with other people - also used to verify if a message was properly sent.
+receiver.id // shortcut on the sender for the channel id
 ```
 
-### Permission layers
-
-A `Receiver` &gt; `Sender` &gt; `Annonymous` and there are methods to create a receiver/annonymous
-instance out of a sender instance:
+All objects create with `createChannel` are well de-/serializable:
 
 ```javascript
-const { createReceiver } = setup(sodium)
-const receiver = await createReceiver()
+const { createChannel, Receiver, Sender, Annonymous } = setup(sodium)
+const { receiver, sender, annonymous } = await createChannel()
+
+new Receiver(receiver.toJSON())
+new Sender(sender.toJSON())
+new Annonymous(annonymous.toJSON())
 ```
 
-you can also destruct each instance:
+### .annonymous
+
+Both the `.sender` and the `.receiver` object have a `.annoymous` field
+to retreive an annonymous instance for the sender/receiver.
 
 ```javascript
-const { receiver, sender, annonymous } = await createReceiver()
+const { receiver, sender } = await createChannel()
+receiver.annonymous.idBase64 === sender.annonymous.idBase64
 ```
 
-Every instance can verify a given message for a channel:
+#### sender.encrypt(body)
+
+Encrypt and sign a given input with the sender key.
+
+- `body` - what you like to encrypt, any serializable object is possible
 
 ```javascript
-const bool = await annonymous.verify(signature: Uint8Array, body: Uint8Array)
-const bool2 = await annonymous.verifyMessage(message: IEncryptedMessage)
+const encrypted = await sender.encrypt('secret message')
+encrypted.signature // Uint8Array
+encrypted.body // Uint8Array
 ```
 
-Only receivers and senders can decrypt a message:
+#### sender.encryptOnly(body)
+
+Only encrypt the body. This is only recommended in an environment where the
+signature needs to be created at a different time!
+
+- `body` - what you like to encrypt, any serializable object is possible
 
 ```javascript
-const message = await receiver.decrypt(message: IEncryptedMessage)
+const encrypted = await sender.encrypt('secret message')
+encrypted // Uint8Array with an encrypted message
 ```
 
-since signing is not the same as encrypting, it is also possible to sign messages for receivers.
+#### sender.sign(data)
+
+Signs a given data. This is only recommended in an environment where the
+data was encrypted at a different time!
+
+- `data` - Uint8Array for which a signature is wanted
 
 ```javascript
-const signature = await receiver.sign(message: Uint8Array)
+const signature = await sender.sign((await sender.encrypt('secret message')).body)
+signature // Uint8Array with the signature of the encrypted message
 ```
 
-but only senders are able to encrypt messages.
+#### annonymous.verify(signature, body)
+
+Using the annonymous object we can verify a given data.
+
+- `signature` - `Uint8Array` with the signature for the `body`
+- `body` - `Uint8Array` with of the encrypted data.
 
 ```javascript
-const encrypted: IEncryptedMessage = await sender.encrypt(message)
+const encrypted = await sender.encrypt('hello world')
+const bool = await annonymous.verify(encrypted.signature, encrypted.body)
 ```
 
-you can also encrypt a message without signing.
+#### annonymous.verifyMessage(message)
+
+As a short-cut its also possible to just verify a message
+
+- `message` - `{ signature: Uint8Array, body: Uint8Array }`
 
 ```javascript
-const encrypted: Uint8Array = await sender.encryptOnly(message)
+const bool = await annonymous.verifyMessage(message)
 ```
 
-and decrypt this message:
+#### receiver.decrypt(encrypted)
+
+Get the content of a once encrypted message.
+
+- `encrypted` - `{ signature: Uint8Array, body: Uint8Array }` as created by `sender.encrypt` or `Uint8Array` created with `sender.encryptOnly`
 
 ```javascript
-const message = await sender.decrypt(uint8Array)
-```
-
-### De-/Serialization
-
-The default created Sender/Receiver/Annonymous instances can be serialized/deserialized
-using common JSON structs:
-
-```javascript
-const { Receiver } = setup(sodium)
-const receiverJson = receiver.toJSON()
-const restoredReceiver = new Receiver(json)
+const message = await receiver.decrypt(message:)
 ```
 
 ## Creating a handshake

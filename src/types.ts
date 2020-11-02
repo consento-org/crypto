@@ -40,7 +40,6 @@ export interface ISender extends IChannelId {
   readonly sendKeyBase64: string
   readonly encryptKey: Uint8Array
   readonly signKey: Uint8Array
-  readonly sender: this
   readonly annonymous: IAnnonymous
   sign(data: Uint8Array): Promise<Uint8Array>
   encrypt(message: IEncodable): Promise<IEncryptedMessage>
@@ -57,29 +56,45 @@ export interface IReceiverOptions {
 
 export interface IReceiver extends IChannelId {
   readonly receiveKey: Uint8Array
-  readonly receiver: this
   readonly receiveKeyBase64: string
-  readonly sender: ISender
   readonly annonymous: IAnnonymous
   toJSON(): IReceiverJSON
-  decrypt(encrypted: IEncryptedMessage): Promise<IDecryption>
+  /**
+   * Decrypts a message written by an associated Sender
+   *
+   * @param encrypted signed or unsigned message
+   */
+  decrypt(encrypted: IEncryptedMessage | Uint8Array): Promise<IDecryption>
 }
 
-export interface IConnectionJSON {
+export type ComType = 'channel' | 'connection'
+
+export interface IComJSON<TType = ComType> {
   receiver: IReceiverJSON
   sender: ISenderJSON
+  type: TType
 }
 
-export interface IConnectionOptions {
+export interface IComOptions<TType = ComType> {
   sender: ISenderOptions
   receiver: IReceiverOptions
+  type?: TType
 }
-
-export interface IConnection {
+export interface ICom<TType = ComType> {
   sender: ISender
   receiver: IReceiver
-  toJSON(): IConnectionJSON
+  type: TType
+  toJSON(): IComJSON<TType>
 }
+
+export type IConnection = ICom<'connection'>
+export type IConnectionJSON = IComJSON<'connection'>
+export type IConnectionOptions = IComOptions<'connection'>
+export interface IChannel extends ICom<'channel'> {
+  annonymous: IAnnonymous
+}
+export type IChannelJSON = IComJSON<'channel'>
+export type IChannelOptions = IComOptions<'channel'>
 
 export interface IHandshakeInitJSON {
   receiver: IReceiverJSON
@@ -137,11 +152,12 @@ export interface IHandshakeConfirmation {
 }
 
 export interface ICryptoPrimitives {
-  createReceiver(opts?: ITimeoutOptions): Promise<IReceiver>
+  createChannel(opts?: ITimeoutOptions): Promise<IChannel>
   Annonymous: new (opts: IAnnonymousOptions) => IAnnonymous
   Receiver: new (opts: IReceiverOptions) => IReceiver
   Sender: new (opts: ISenderOptions) => ISender
   Connection: new (opts: IConnectionOptions) => IConnection
+  Channel: new (opts: IChannelOptions) => IChannel
 }
 
 export interface ICryptoHandshake {

@@ -57,6 +57,10 @@ export function bufferCompare (a: Uint8Array, b: Uint8Array): number {
   return 0
 }
 
+export function bufferEquals (a: Uint8Array, b: Uint8Array): boolean {
+  return bufferCompare(a, b) === 0
+}
+
 export function bufferToString (buffer: Uint8Array, encoding: EEncoding = 'utf8'): string {
   return Buffer.from(buffer).toString(encoding)
 }
