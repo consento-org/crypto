@@ -1,12 +1,11 @@
 import { IVerifier, IWriter, IWriterJSON, IEncryptedMessage, IWriterOptions } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, signKeyFromSendKey, verifyKeyFromSendOrReceiveKey } from './key'
-import { anyToBuffer, bufferToString, toBuffer, IEncodable } from '../util'
+import { bufferToString, toBuffer, IEncodable } from '../util'
+import { encryptMessage } from '../util/encryptMessage'
 import * as sodium from 'sodium-universal'
 
 const {
-  crypto_box_SEALBYTES: CRYPTO_BOX_SEALBYTES,
-  crypto_box_seal: boxSeal,
   crypto_sign_BYTES: CRYPTO_SIGN_BYTES,
   crypto_sign_detached: signDetached,
   sodium_malloc: malloc
@@ -16,13 +15,6 @@ function sign (signSecretKey: Uint8Array, body: Uint8Array): Uint8Array {
   const signature = malloc(CRYPTO_SIGN_BYTES)
   signDetached(signature, body, signSecretKey)
   return signature
-}
-
-function encryptMessage (writeKey: Uint8Array, message: IEncodable): Uint8Array {
-  const msgBuffer = anyToBuffer(message)
-  const body = malloc(msgBuffer.length + CRYPTO_BOX_SEALBYTES)
-  boxSeal(body, msgBuffer, writeKey)
-  return body
 }
 
 export class Writer implements IWriter {

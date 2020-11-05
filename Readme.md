@@ -90,7 +90,7 @@ encrypted.signature // Uint8Array
 encrypted.body // Uint8Array
 ```
 
-#### writer.encryptOnly(body)
+#### writer.encryptOnly(body), reader.encryptOnly(body)
 
 Only encrypt the body. This is only recommended in an environment where the
 signature needs to be created at a different time!

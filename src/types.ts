@@ -80,6 +80,7 @@ export interface IReader extends IChannelActor {
    * @param encrypted signed or unsigned message
    */
   decrypt(encrypted: IEncryptedMessage | Uint8Array): IDecryption
+  encryptOnly(message: IEncodable): Uint8Array
 }
 
 export type ComType = 'channel' | 'connection'

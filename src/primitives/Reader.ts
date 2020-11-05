@@ -1,7 +1,8 @@
 import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions, IDecryption, EDecryptionError } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, decryptKeyFromReceiveKey, verifyKeyFromSendOrReceiveKey } from './key'
-import { bufferToAny, bufferToString, toBuffer } from '../util'
+import { bufferToAny, bufferToString, IEncodable, toBuffer } from '../util'
+import { encryptMessage } from '../util/encryptMessage'
 import * as sodium from 'sodium-universal'
 
 const {
@@ -103,6 +104,10 @@ export class Reader implements IReader {
 
   toString (): string {
     return `Reader[${this.channelKeyBase64}]`
+  }
+
+  encryptOnly (message: IEncodable): Uint8Array {
+    return encryptMessage(this.encryptKey, message)
   }
 
   decrypt (encrypted: IEncryptedMessage): IDecryption {
