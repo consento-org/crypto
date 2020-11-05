@@ -1,14 +1,14 @@
 import {
-  IAnnonymous,
-  IReceiver,
-  ISender,
+  IVerifier,
+  IReader,
+  IWriter,
   IChannel,
   IChannelJSON,
   IChannelOptions
 } from '../types'
 import { bufferEquals, Buffer } from '../util'
-import { Receiver } from './Receiver'
-import { Sender } from './Sender'
+import { Reader } from './Reader'
+import { Writer } from './Writer'
 import * as sodium from 'sodium-universal'
 
 const {
@@ -48,35 +48,35 @@ export function createChannel (): Channel {
   const encrypt = createEncryptionKeys()
   const sign = createSignKeys()
   return new Channel({
-    receiver: { receiveKey: Buffer.concat([encrypt.publicKey, sign.publicKey, encrypt.privateKey]) },
-    sender: { sendKey: Buffer.concat([encrypt.publicKey, sign.publicKey, sign.privateKey]) }
+    reader: { readerKey: Buffer.concat([encrypt.publicKey, sign.publicKey, encrypt.privateKey]) },
+    writer: { writerKey: Buffer.concat([encrypt.publicKey, sign.publicKey, sign.privateKey]) }
   })
 }
 
 export class Channel implements IChannel {
-  receiver: IReceiver
-  sender: ISender
+  reader: IReader
+  writer: IWriter
   type: 'channel' = 'channel'
 
   constructor (opts: IChannelOptions) {
-    this.receiver = (opts.receiver instanceof Receiver) ? opts.receiver : new Receiver(opts.receiver)
-    this.sender = (opts.sender instanceof Sender) ? opts.sender : new Sender(opts.sender)
+    this.reader = (opts.reader instanceof Reader) ? opts.reader : new Reader(opts.reader)
+    this.writer = (opts.writer instanceof Writer) ? opts.writer : new Writer(opts.writer)
     if (opts.type !== undefined && opts.type as string !== 'channel') {
       throw new Error(`Can not restore a channel from a [${opts.type}]`)
     }
-    if (!bufferEquals(this.receiver.id, this.sender.id)) {
-      throw new Error('Can not create a channel with both the sender and the receiver have a different id! Did you mean to restore a connection?')
+    if (!bufferEquals(this.reader.channelKey, this.writer.channelKey)) {
+      throw new Error('Can not create a channel with both the writer and the reader have a different id! Did you mean to restore a connection?')
     }
   }
 
-  get annonymous (): IAnnonymous {
-    return this.receiver.annonymous
+  get verifier (): IVerifier {
+    return this.reader.verifier
   }
 
   toJSON (): IChannelJSON {
     return {
-      receiver: this.receiver.toJSON(),
-      sender: this.sender.toJSON(),
+      reader: this.reader.toJSON(),
+      writer: this.writer.toJSON(),
       type: 'channel'
     }
   }

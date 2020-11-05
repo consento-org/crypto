@@ -21,59 +21,59 @@ export interface IDecryptionSuccess {
 
 export type IDecryption = IDecryptionSuccess | IDecryptionError
 
-export interface IAnnonymousJSON {
-  id: string
+export interface IVerifierJSON {
+  channelKey: string
 }
 
-export interface IAnnonymousOptions {
-  id: IStringOrBuffer
+export interface IVerifierOptions {
+  channelKey: IStringOrBuffer
 }
 
-export interface IChannelId {
-  readonly id: Uint8Array
-  readonly idBase64: string
-  readonly idHex: string
+export interface IChannelActor {
+  readonly channelKey: Uint8Array
+  readonly channelKeyBase64: string
+  readonly channelKeyHex: string
 }
 
-export interface IAnnonymous extends IChannelId {
-  toJSON(): IAnnonymousJSON
+export interface IVerifier extends IChannelActor {
+  toJSON(): IVerifierJSON
   verify(signature: Uint8Array, body: Uint8Array): boolean
   verifyMessage(message: IEncryptedMessage): boolean
 }
 
-export interface ISenderJSON {
-  sendKey: string
+export interface IWriterJSON {
+  writerKey: string
 }
 
-export interface ISenderOptions {
-  sendKey: IStringOrBuffer
+export interface IWriterOptions {
+  writerKey: IStringOrBuffer
 }
 
-export interface ISender extends IChannelId {
-  toJSON(): ISenderJSON
-  readonly sendKey: Uint8Array
-  readonly sendKeyBase64: string
+export interface IWriter extends IChannelActor {
+  toJSON(): IWriterJSON
+  readonly writerKey: Uint8Array
+  readonly writerKeyBase64: string
   readonly encryptKey: Uint8Array
   readonly signKey: Uint8Array
-  readonly annonymous: IAnnonymous
+  readonly verifier: IVerifier
   sign(data: Uint8Array): Uint8Array
   encrypt(message: IEncodable): IEncryptedMessage
   encryptOnly(message: IEncodable): Uint8Array
 }
 
-export interface IReceiverJSON {
-  receiveKey: string
+export interface IReaderJSON {
+  readerKey: string
 }
 
-export interface IReceiverOptions {
-  receiveKey: IStringOrBuffer
+export interface IReaderOptions {
+  readerKey: IStringOrBuffer
 }
 
-export interface IReceiver extends IChannelId {
-  readonly receiveKey: Uint8Array
-  readonly receiveKeyBase64: string
-  readonly annonymous: IAnnonymous
-  toJSON(): IReceiverJSON
+export interface IReader extends IChannelActor {
+  readonly readerKey: Uint8Array
+  readonly readerKeyBase64: string
+  readonly verifier: IVerifier
+  toJSON(): IReaderJSON
   /**
    * Decrypts a message written by an associated Sender
    *
@@ -85,19 +85,19 @@ export interface IReceiver extends IChannelId {
 export type ComType = 'channel' | 'connection'
 
 export interface IComJSON<TType = ComType> {
-  receiver: IReceiverJSON
-  sender: ISenderJSON
+  reader: IReaderJSON
+  writer: IWriterJSON
   type: TType
 }
 
 export interface IComOptions<TType = ComType> {
-  sender: ISenderOptions
-  receiver: IReceiverOptions
+  writer: IWriterOptions
+  reader: IReaderOptions
   type?: TType
 }
 export interface ICom<TType = ComType> {
-  sender: ISender
-  receiver: IReceiver
+  writer: IWriter
+  reader: IReader
   type: TType
   toJSON(): IComJSON<TType>
 }
@@ -106,25 +106,25 @@ export type IConnection = ICom<'connection'>
 export type IConnectionJSON = IComJSON<'connection'>
 export type IConnectionOptions = IComOptions<'connection'>
 export interface IChannel extends ICom<'channel'> {
-  annonymous: IAnnonymous
+  verifier: IVerifier
 }
 export type IChannelJSON = IComJSON<'channel'>
 export type IChannelOptions = IComOptions<'channel'>
 
 export interface IHandshakeInitJSON {
-  receiver: IReceiverJSON
+  receiver: IReaderJSON
   firstMessage: string
   handshakeSecret: string
 }
 
 export interface IHandshakeInitOptions {
-  receiver: IReceiver | IReceiverOptions
+  receiver: IReader | IReaderOptions
   firstMessage: IStringOrBuffer
   handshakeSecret: IStringOrBuffer
 }
 
 export interface IHandshakeInit {
-  receiver: IReceiver
+  receiver: IReader
   firstMessage: Uint8Array
   handshakeSecret: Uint8Array
   toJSON(): IHandshakeInitJSON

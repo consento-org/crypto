@@ -1,5 +1,5 @@
-import { IAnnonymous, ISender, ISenderJSON, IEncryptedMessage, ISenderOptions } from '../types'
-import { Annonymous } from './Annonymous'
+import { IVerifier, IWriter, IWriterJSON, IEncryptedMessage, IWriterOptions } from '../types'
+import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, signKeyFromSendKey, verifyKeyFromSendOrReceiveKey } from './key'
 import { anyToBuffer, bufferToString, toBuffer, IEncodable } from '../util'
 import * as sodium from 'sodium-universal'
@@ -25,14 +25,14 @@ function encryptMessage (writeKey: Uint8Array, message: IEncodable): Uint8Array 
   return body
 }
 
-export class Sender implements ISender {
+export class Writer implements IWriter {
   _sendKey?: Uint8Array
   _sendKeyBase64?: string
-  _annonymous?: IAnnonymous
+  _annonymous?: IVerifier
   _signKey?: Uint8Array
   _encryptKey?: Uint8Array
 
-  constructor ({ sendKey }: ISenderOptions) {
+  constructor ({ writerKey: sendKey }: IWriterOptions) {
     if (typeof sendKey === 'string') {
       this._sendKeyBase64 = sendKey
     } else {
@@ -42,57 +42,57 @@ export class Sender implements ISender {
 
   get signKey (): Uint8Array {
     if (this._signKey === undefined) {
-      this._signKey = signKeyFromSendKey(this.sendKey)
+      this._signKey = signKeyFromSendKey(this.writerKey)
     }
     return this._signKey
   }
 
   get encryptKey (): Uint8Array {
     if (this._encryptKey === undefined) {
-      this._encryptKey = encryptKeyFromSendOrReceiveKey(this.sendKey)
+      this._encryptKey = encryptKeyFromSendOrReceiveKey(this.writerKey)
     }
     return this._encryptKey
   }
 
-  get sendKey (): Uint8Array {
+  get writerKey (): Uint8Array {
     if (this._sendKey === undefined) {
       this._sendKey = toBuffer(this._sendKeyBase64 as unknown as string)
     }
     return this._sendKey
   }
 
-  get sendKeyBase64 (): string {
+  get writerKeyBase64 (): string {
     if (this._sendKeyBase64 === undefined) {
       this._sendKeyBase64 = bufferToString(this._sendKey as unknown as Uint8Array, 'base64')
     }
     return this._sendKeyBase64
   }
 
-  get id (): Uint8Array {
-    return this.annonymous.id
+  get channelKey (): Uint8Array {
+    return this.verifier.channelKey
   }
 
-  get idHex (): string {
-    return this.annonymous.idHex
+  get channelKeyHex (): string {
+    return this.verifier.channelKeyHex
   }
 
-  get idBase64 (): string {
-    return this.annonymous.idBase64
+  get channelKeyBase64 (): string {
+    return this.verifier.channelKeyBase64
   }
 
-  get annonymous (): IAnnonymous {
+  get verifier (): IVerifier {
     if (this._annonymous === undefined) {
-      this._annonymous = new Annonymous({ id: verifyKeyFromSendOrReceiveKey(this.sendKey) })
+      this._annonymous = new Verifier({ channelKey: verifyKeyFromSendOrReceiveKey(this.writerKey) })
     }
     return this._annonymous
   }
 
-  toJSON (): ISenderJSON {
-    return { sendKey: this.sendKeyBase64 }
+  toJSON (): IWriterJSON {
+    return { writerKey: this.writerKeyBase64 }
   }
 
   toString (): string {
-    return `Sender[id=${this.idBase64}]`
+    return `Writer[${this.channelKeyBase64}]`
   }
 
   sign (data: Uint8Array): Uint8Array {
