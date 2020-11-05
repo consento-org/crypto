@@ -1,11 +1,31 @@
-import { ICryptoCore } from '../core/types'
-import { Buffer, ITimeoutOptions } from '../util/types'
-import { toBuffer, bufferToString } from '../util/buffer'
-import { ICryptoHandshake, IHandshakeInit, IReceiver, ICryptoPrimitives, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
-import { checkpoint, wrapTimeout } from '../util/abort'
+import { Buffer, toBuffer, bufferToString } from '../util'
+import { IHandshakeInit, IReceiver, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
+import { createChannel, Receiver, Sender, Connection } from '../primitives'
+import { randomBuffer } from '../util/randomBuffer'
+import { decrypt, encrypt } from '../util/secretbox'
+import * as sodium from 'sodium-universal'
+
+const {
+  crypto_scalarmult_BYTES: CRYPTO_SCALARMULT_BYTES,
+  crypto_scalarmult: scalarMult,
+  crypto_scalarmult_base: scalarMultBase,
+  sodium_malloc: malloc
+} = sodium.default
 
 export const HANDSHAKE_MSG_VERSION = Buffer.from([1])
 
+function computeSecret (privateKey: Uint8Array, remotePublic: Uint8Array): Uint8Array {
+  const secret = malloc(CRYPTO_SCALARMULT_BYTES)
+  scalarMult(secret, privateKey, remotePublic)
+  return secret
+}
+
+function createHandshake (): { secretKey: Uint8Array, publicKey: Uint8Array } {
+  const secretKey = randomBuffer(CRYPTO_SCALARMULT_BYTES)
+  const publicKey = malloc(CRYPTO_SCALARMULT_BYTES)
+  scalarMultBase(publicKey, secretKey)
+  return { secretKey, publicKey }
+}
 function processHandshake (msg: Uint8Array): {
   token: Uint8Array
   sendKey: Uint8Array
@@ -22,130 +42,115 @@ function processHandshake (msg: Uint8Array): {
   }
 }
 
-export function setupHandshake (crypto: ICryptoCore, { createChannel, Sender, Receiver, Connection }: ICryptoPrimitives): ICryptoHandshake {
-  class HandshakeInit implements IHandshakeInit {
-    receiver: IReceiver
-    firstMessage: Uint8Array
-    handshakeSecret: Uint8Array
+export class HandshakeInit implements IHandshakeInit {
+  receiver: IReceiver
+  firstMessage: Uint8Array
+  handshakeSecret: Uint8Array
 
-    constructor ({ receiver, handshakeSecret, firstMessage }: IHandshakeInitOptions) {
-      this.receiver = new Receiver(receiver)
-      this.handshakeSecret = toBuffer(handshakeSecret)
-      this.firstMessage = toBuffer(firstMessage)
-    }
+  constructor ({ receiver, handshakeSecret, firstMessage }: IHandshakeInitOptions) {
+    this.receiver = new Receiver(receiver)
+    this.handshakeSecret = toBuffer(handshakeSecret)
+    this.firstMessage = toBuffer(firstMessage)
+  }
 
-    toJSON (): IHandshakeInitJSON {
-      return {
-        receiver: this.receiver.toJSON(),
-        firstMessage: bufferToString(this.firstMessage, 'base64'),
-        handshakeSecret: bufferToString(this.handshakeSecret, 'base64')
-      }
-    }
-
-    async confirm (accept: IHandshakeAcceptMessage, opts?: ITimeoutOptions): Promise<IHandshakeConfirmation> {
-      return await wrapTimeout(async signal => {
-        const cp = checkpoint(signal)
-        const secretKey = await cp(crypto.computeSecret(this.handshakeSecret, Buffer.from(accept.token, 'base64')))
-        const bob = await cp(createChannel())
-        const sendKey = await cp(crypto.decrypt(secretKey, Buffer.from(accept.secret, 'base64')))
-        if (!(sendKey instanceof Uint8Array)) {
-          throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${sendKey.constructor.name}`), { code: 'invalid-message', sendKey })
-        }
-        const aliceSender = new Sender({ sendKey })
-        return new HandshakeConfirmation({
-          connection: new Connection({
-            sender: aliceSender,
-            receiver: bob.receiver
-          }),
-          // In case you are wondering why we not just simply return "bob" as sender
-          // but instead pass it in two messages: the reason is that without this step
-          // the API is clearer.
-          // TODO: rethink
-          finalMessage: bob.sender.sendKey
-        })
-      }, opts)
+  toJSON (): IHandshakeInitJSON {
+    return {
+      receiver: this.receiver.toJSON(),
+      firstMessage: bufferToString(this.firstMessage, 'base64'),
+      handshakeSecret: bufferToString(this.handshakeSecret, 'base64')
     }
   }
 
-  class HandshakeAccept extends Connection implements IHandshakeAccept {
-    acceptMessage: IHandshakeAcceptMessage
-
-    constructor (ops: IHandshakeAcceptOptions) {
-      super(ops)
-      this.acceptMessage = ops.acceptMessage
+  confirm (accept: IHandshakeAcceptMessage): IHandshakeConfirmation {
+    const secretKey = computeSecret(this.handshakeSecret, Buffer.from(accept.token, 'base64'))
+    const backChannel = createChannel()
+    const sendKey = decrypt(secretKey, Buffer.from(accept.secret, 'base64'))
+    if (!(sendKey instanceof Uint8Array)) {
+      throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${sendKey.constructor.name}`), { code: 'invalid-message', sendKey })
     }
+    const aliceSender = new Sender({ sendKey })
+    return new HandshakeConfirmation({
+      connection: new Connection({
+        sender: aliceSender,
+        receiver: backChannel.receiver
+      }),
+      // In case you are wondering why we not just simply return "backChannel" as sender
+      // but instead pass it in two messages: the reason is that without this step
+      // the API is clearer.
+      // TODO: rethink
+      finalMessage: backChannel.sender.sendKey
+    })
+  }
+}
 
-    toJSON (): IHandshakeAcceptJSON {
-      return {
-        ...super.toJSON(),
-        acceptMessage: this.acceptMessage
-      }
-    }
+export class HandshakeAccept extends Connection implements IHandshakeAccept {
+  acceptMessage: IHandshakeAcceptMessage
 
-    async finalize (message: Uint8Array): Promise<IConnection> {
-      return new Connection({
-        receiver: this.receiver,
-        sender: new Sender({ sendKey: message })
-      })
+  constructor (ops: IHandshakeAcceptOptions) {
+    super(ops)
+    this.acceptMessage = ops.acceptMessage
+  }
+
+  toJSON (): IHandshakeAcceptJSON {
+    return {
+      ...super.toJSON(),
+      acceptMessage: this.acceptMessage
     }
   }
 
-  class HandshakeConfirmation implements IHandshakeConfirmation {
-    finalMessage: Uint8Array
-    connection: IConnection
+  finalize (message: Uint8Array): IConnection {
+    return new Connection({
+      receiver: this.receiver,
+      sender: new Sender({ sendKey: message })
+    })
+  }
+}
 
-    constructor (opts: IHandshakeConfirmationOptions) {
-      this.connection = new Connection(opts.connection)
-      this.finalMessage = toBuffer(opts.finalMessage)
-    }
+export class HandshakeConfirmation implements IHandshakeConfirmation {
+  finalMessage: Uint8Array
+  connection: IConnection
 
-    toJSON (): IHandshakeConfirmationJSON {
-      return {
-        connection: this.connection.toJSON(),
-        finalMessage: bufferToString(this.finalMessage, 'base64')
-      }
-    }
+  constructor (opts: IHandshakeConfirmationOptions) {
+    this.connection = new Connection(opts.connection)
+    this.finalMessage = toBuffer(opts.finalMessage)
   }
 
-  return {
-    async initHandshake (opts?: ITimeoutOptions): Promise<HandshakeInit> {
-      return await wrapTimeout(async signal => {
-        const cp = checkpoint(signal)
-        const { receiver, sender } = await cp(createChannel())
-        const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
-        return new HandshakeInit({
-          receiver,
-          handshakeSecret,
-          firstMessage: Buffer.concat([
-            HANDSHAKE_MSG_VERSION,
-            handshakePublic,
-            sender.sendKey
-          ])
-        })
-      }, opts)
-    },
-    async acceptHandshake (firstMessage: Uint8Array, opts?: ITimeoutOptions): Promise<IHandshakeAccept> {
-      return await wrapTimeout(async signal => {
-        const {
-          token,
-          sendKey
-        } = processHandshake(firstMessage)
-        const cp = checkpoint(signal)
-        const { privateKey: handshakeSecret, publicKey: handshakePublic } = await cp(crypto.initHandshake())
-        const secretKey = await cp(crypto.computeSecret(handshakeSecret, token))
-        const { receiver, sender } = await cp(createChannel())
-        return new HandshakeAccept({
-          sender: { sendKey },
-          receiver,
-          acceptMessage: {
-            token: bufferToString(handshakePublic, 'base64'),
-            secret: bufferToString(await crypto.encrypt(secretKey, sender.sendKey), 'base64')
-          }
-        })
-      }, opts)
-    },
-    HandshakeInit,
-    HandshakeAccept,
-    HandshakeConfirmation
+  toJSON (): IHandshakeConfirmationJSON {
+    return {
+      connection: this.connection.toJSON(),
+      finalMessage: bufferToString(this.finalMessage, 'base64')
+    }
   }
+}
+
+export function initHandshake (): HandshakeInit {
+  const { receiver, sender } = createChannel()
+  const handshake = createHandshake()
+  return new HandshakeInit({
+    receiver,
+    handshakeSecret: handshake.secretKey,
+    firstMessage: Buffer.concat([
+      HANDSHAKE_MSG_VERSION,
+      handshake.publicKey,
+      sender.sendKey
+    ])
+  })
+}
+
+export function acceptHandshake (firstMessage: Uint8Array): IHandshakeAccept {
+  const {
+    token,
+    sendKey
+  } = processHandshake(firstMessage)
+  const handshake = createHandshake()
+  const secretKey = computeSecret(handshake.secretKey, token)
+  const { receiver, sender } = createChannel()
+  return new HandshakeAccept({
+    sender: { sendKey },
+    receiver,
+    acceptMessage: {
+      token: bufferToString(handshake.publicKey, 'base64'),
+      secret: bufferToString(encrypt(secretKey, sender.sendKey), 'base64')
+    }
+  })
 }

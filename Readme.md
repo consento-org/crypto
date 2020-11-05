@@ -13,25 +13,6 @@ version that will work easily on server and mobile phones.
 The implementation offered is as synchronous as possible, offering serialization (toJSON/Classes)
 for all data types.
 
-## Setup the crypto system
-
-In order to be quick in node.js and have a functional react-native-compatible implementation
-`@consento/crypto` comes with two variants of crypto functions.
-
-- `sodium` that uses a [modified version](https://github.com/consento-org/libsodium.js) of `libsodium.js` which runs on react-native
-- `friends` that uses a [`sodium-universal`](https://github.com/sodium-friends/sodium-universal) from [`sodium-friends`](https://github.com/sodium-friends) which runs efficiently on `node.js` and in the browser.
-
-To get access to the actual API you will always need to run setup first:
-
-```javascript
-import { setup } from '@consento/crypto'
-import { sodium } from '@consento/crypto/core/sodium'
-import { friends } from '@consento/crypto/core/friends'
-
-const cryptoFriends = setup(friends) // sodium-universal variant of crypto
-const cryptoSodium = setup(sodium) // libsodium.js variant of crypto
-```
-
 ## Vocabulary
 
 - `Channel` - an e2e encrypted setup consisting of one `Receiver` and one `Sender`
@@ -47,7 +28,7 @@ const cryptoSodium = setup(sodium) // libsodium.js variant of crypto
 The crypto library contains useful primitives for sending e2e encrypted messages through public channels.
 
 ```javascript
-const { createChannel } = setup(sodium)
+const { createChannel } = require('@consento/crypto')
 const { receiver, sender } = createChannel()
 
 const encrypted = sender.encrypt('hello world')
@@ -59,7 +40,7 @@ decrypted.body === 'hello world'
 You can create a new communication channel with the simple `createChannel` method.
 
 ```javascript
-const channel = await createChannel()
+const channel = createChannel()
 const { receiver } = channel // Can decrypt messages; _could_ encrypt messages, but these would not be signed and rejected!
 const { sender } = channel // Can only encrypt messages.
 const { annonymous } = channel // Object that can verify messages but not de-/encrypt messages.
@@ -81,8 +62,8 @@ receiver.id // shortcut on the sender for the channel id
 All objects create with `createChannel` are well de-/serializable:
 
 ```javascript
-const { createChannel, Receiver, Sender, Annonymous } = setup(sodium)
-const { receiver, sender, annonymous } = await createChannel()
+const { createChannel, Receiver, Sender, Annonymous } = require('@consento/crypto')
+const { receiver, sender, annonymous } = createChannel()
 
 new Receiver(receiver.toJSON())
 new Sender(sender.toJSON())
@@ -95,7 +76,7 @@ Both the `.sender` and the `.receiver` object have a `.annoymous` field
 to retreive an annonymous instance for the sender/receiver.
 
 ```javascript
-const { receiver, sender } = await createChannel()
+const { receiver, sender } = createChannel()
 receiver.annonymous.idBase64 === sender.annonymous.idBase64
 ```
 
@@ -106,7 +87,7 @@ Encrypt and sign a given input with the sender key.
 - `body` - what you like to encrypt, any serializable object is possible
 
 ```javascript
-const encrypted = await sender.encrypt('secret message')
+const encrypted = sender.encrypt('secret message')
 encrypted.signature // Uint8Array
 encrypted.body // Uint8Array
 ```
@@ -119,7 +100,7 @@ signature needs to be created at a different time!
 - `body` - what you like to encrypt, any serializable object is possible
 
 ```javascript
-const encrypted = await sender.encrypt('secret message')
+const encrypted = sender.encrypt('secret message')
 encrypted // Uint8Array with an encrypted message
 ```
 
@@ -131,7 +112,7 @@ data was encrypted at a different time!
 - `data` - Uint8Array for which a signature is wanted
 
 ```javascript
-const signature = await sender.sign((await sender.encrypt('secret message')).body)
+const signature = sender.sign(sender.encryptOnly('secret message'))
 signature // Uint8Array with the signature of the encrypted message
 ```
 
@@ -143,8 +124,8 @@ Using the annonymous object we can verify a given data.
 - `body` - `Uint8Array` with of the encrypted data.
 
 ```javascript
-const encrypted = await sender.encrypt('hello world')
-const bool = await annonymous.verify(encrypted.signature, encrypted.body)
+const encrypted = sender.encrypt('hello world')
+const bool = annonymous.verify(encrypted.signature, encrypted.body)
 ```
 
 #### annonymous.verifyMessage(message)
@@ -154,7 +135,7 @@ As a short-cut its also possible to just verify a message
 - `message` - `{ signature: Uint8Array, body: Uint8Array }`
 
 ```javascript
-const bool = await annonymous.verifyMessage(message)
+const bool = annonymous.verifyMessage(message)
 ```
 
 #### receiver.decrypt(encrypted)
@@ -164,7 +145,7 @@ Get the content of a once encrypted message.
 - `encrypted` - `{ signature: Uint8Array, body: Uint8Array }` as created by `sender.encrypt` or `Uint8Array` created with `sender.encryptOnly`
 
 ```javascript
-const message = await receiver.decrypt(message:)
+const message = receiver.decrypt(message:)
 ```
 
 ## Creating a handshake
@@ -172,7 +153,7 @@ const message = await receiver.decrypt(message:)
 `crypto` also holds primitives for a decentralized handshake mechanism.
 
 ```javascript
-const { initHandshake, acceptHandshake } = setup(sodium)
+const { initHandshake, acceptHandshake } = require('@consento/crypto')
 ```
 
 `initHandshake` is to be used by the first person - "**A**lice".
@@ -184,7 +165,7 @@ How the handshake works:
 1. **A**lice needs to create the initial message:
 
     ```javascript
-    const alice = await initHandshake()
+    const alice = initHandshake()
     const initMessage = alice.firstMessage
     ```
 
@@ -193,21 +174,21 @@ How the handshake works:
 4. **B**ob needs to receive the initial message
 
     ```javascript
-    const bob = await acceptHandshake(firstMessage)
+    const bob = acceptHandshake(firstMessage)
     ```
 
 5. **B**ob needs to listen to the channel with the id `bob.receiver.id` for the final message from **A**lice.
 6. **B**ob needs to send the message, encrypted to the channel with the id: `bob.sender.id`:
 
     ```javascript
-    await bob.sender.encrypt(bob.acceptMessage)
+    bob.sender.encrypt(bob.acceptMessage)
     ```
 
 7. **A**lice has to receive the acception message and can generate the channels out of it.
 
     ```javascript
-    const decryptedAcceptMessage = (await alice.receiver.decryptMessage(acceptMessage)).body
-    const package = await confirmHandshake(alice, decryptedAcceptMessage)
+    const decryptedAcceptMessage = alice.receiver.decryptMessage(acceptMessage).body
+    const package = confirmHandshake(alice, decryptedAcceptMessage)
     const {
       connection: {
         sender: aliceToBobSender, // channel to send messages to Bob
@@ -220,20 +201,20 @@ How the handshake works:
 8. **A**lice has to send the final message to bob:
 
     ```javascript
-    await aliceToBobSender.encrypt(finalMessage)
+    aliceToBobSender.encrypt(finalMessage)
     ```
 
 9. **B**ob can now finalize the handshake
 
     ```javascript
-    const { sender: bobToAliceSender, receiver: aliceToBobReceiver } = await bob.finalize(finalMessage)
+    const { sender: bobToAliceSender, receiver: aliceToBobReceiver } = bob.finalize(finalMessage)
     ```
 
 Now **A**lice and **B**ob have each two channels: one to send data to, one to receive data from.
 
 ```javascript
-(await bobToAliceReceiver.decrypt(await aliceToBobSender.encrypt('Hello Bob!')).body // Hello Bob!
-(await aliceToBobReceiver.decrypt(await bobToAliceSender.encrypt('Hello Alice!'))).body // Hello Alice!
+bobToAliceReceiver.decrypt(aliceToBobSender.encrypt('Hello Bob!')).body // Hello Bob!
+aliceToBobReceiver.decrypt(bobToAliceSender.encrypt('Hello Alice!')).body // Hello Alice!
 ```
 
 ## Blob Support
@@ -246,14 +227,14 @@ const { encryptBlob, decryptBlob, isEncryptedBlob } = setup(sodium)
 const {
   blob, // Information about a blob: to pass around
   encrypted // Encrypted data to be stored
-} = await encryptBlob('Hello Secret!')
+} = encryptBlob('Hello Secret!')
 blob.path // Path at which to store the encrypted data
 blob.secretKey // Secretkey to decrypt this data
 blob.size // Number of bytes of the encrypted blob (only available after encryption)
 
 isEncryptedBlob(blob) // To verify if a set of data is a blob
 
-const decrypted = await decryptBlob(blob.secretKey, encrypted)
+const decrypted = decryptBlob(blob.secretKey, encrypted)
 ```
 
 Blob information is serializable with `toJSON` and deserializable using `toEncryptedBlob`.
@@ -261,7 +242,7 @@ Blob information is serializable with `toJSON` and deserializable using `toEncry
 ```javascript
 const { encryptBlob, decryptBlob, toEncryptedBlob } = setup(sodium)
 
-const { blob } = await encryptBlob('Hello Secret!')
+const { blob } = encryptBlob('Hello Secret!')
 const blobJSON = blob.toJSON()
 const sameBlob = toEncryptedBlob(blobJSON)
 ```
@@ -271,8 +252,8 @@ It is possible to restore a blob from it's `secretKey` but that requires async c
 ```javascript
 const { encryptBlob, decryptBlob, toEncryptedBlob } = setup(sodium)
 
-const { blob } = await encryptBlob('Hello Secret!')
-const sameBlob = await toEncryptedBlob(blob.secretKey)
+const { blob } = encryptBlob('Hello Secret!')
+const sameBlob = toEncryptedBlob(blob.secretKey)
 ```
 
 ## License
