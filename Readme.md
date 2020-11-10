@@ -60,8 +60,10 @@ All objects create with `createChannel` are well de-/serializable:
 
 ```javascript
 const { createChannel, Reader, Writer, Verifier } = require('@consento/crypto')
-const { reader, writer, verifier } = createChannel()
+const channel = createChannel()
+const { reader, writer, verifier } = channel
 
+new Channel(channel.toJSON())
 new Reader(reader.toJSON())
 new Writer(writer.toJSON())
 new Verifier(verifier.toJSON())

@@ -6,10 +6,11 @@ import {
   IChannelJSON,
   IChannelOptions
 } from '../types'
-import { bufferEquals, Buffer } from '../util'
+import { Buffer, bufferToString, toBuffer } from '../util'
 import { Reader } from './Reader'
 import { Writer } from './Writer'
 import * as sodium from 'sodium-universal'
+import { readerKeyFromChannelKey, writerKeyFromChannelKey } from './key'
 
 const {
   sodium_malloc: malloc,
@@ -47,37 +48,74 @@ function createSignKeys (): IRawKeys {
 export function createChannel (): Channel {
   const encrypt = createEncryptionKeys()
   const sign = createSignKeys()
-  return new Channel({
-    reader: { readerKey: Buffer.concat([encrypt.publicKey, sign.publicKey, encrypt.privateKey]) },
-    writer: { writerKey: Buffer.concat([encrypt.publicKey, sign.publicKey, sign.privateKey]) }
-  })
+  return new Channel({ channelKey: Buffer.concat([encrypt.publicKey, sign.publicKey, encrypt.privateKey, sign.privateKey]) })
 }
 
 export class Channel implements IChannel {
-  reader: IReader
-  writer: IWriter
-  type: 'channel' = 'channel'
+  _reader?: IReader
+  _writer?: IWriter
+  _channelKey?: Uint8Array
+  _channelKeyBase64?: string
 
-  constructor (opts: IChannelOptions) {
-    this.reader = (opts.reader instanceof Reader) ? opts.reader : new Reader(opts.reader)
-    this.writer = (opts.writer instanceof Writer) ? opts.writer : new Writer(opts.writer)
-    if (opts.type !== undefined && opts.type as string !== 'channel') {
-      throw new Error(`Can not restore a channel from a [${opts.type}]`)
+  constructor ({ channelKey }: IChannelOptions) {
+    if (typeof channelKey === 'string') {
+      this._channelKeyBase64 = channelKey
+    } else {
+      this._channelKey = channelKey
     }
-    if (!bufferEquals(this.reader.channelKey, this.writer.channelKey)) {
-      throw new Error('Can not create a channel with both the writer and the reader have a different id! Did you mean to restore a connection?')
+  }
+
+  get verifyKey (): Uint8Array {
+    return this.reader.verifyKey
+  }
+
+  get verifyKeyBase64 (): string {
+    return this.reader.verifyKeyBase64
+  }
+
+  get verifyKeyHex (): string {
+    return this.reader.verifyKeyHex
+  }
+
+  get channelKey (): Uint8Array {
+    if (this._channelKey === undefined) {
+      this._channelKey = toBuffer(this._channelKeyBase64 as unknown as string)
     }
+    return this._channelKey
+  }
+
+  get channelKeyBase64 (): string {
+    if (this._channelKeyBase64 === undefined) {
+      this._channelKeyBase64 = bufferToString(this._channelKey as unknown as Uint8Array, 'base64')
+    }
+    return this._channelKeyBase64
+  }
+
+  get reader (): IReader {
+    if (this._reader === undefined) {
+      this._reader = new Reader({ readerKey: readerKeyFromChannelKey(this.channelKey) })
+    }
+    return this._reader
+  }
+
+  get writer (): IWriter {
+    if (this._writer === undefined) {
+      this._writer = new Writer({ writerKey: writerKeyFromChannelKey(this.channelKey) })
+    }
+    return this._writer
   }
 
   get verifier (): IVerifier {
     return this.reader.verifier
   }
 
+  toString (): string {
+    return `Channel[${this.verifyKeyBase64}]`
+  }
+
   toJSON (): IChannelJSON {
     return {
-      reader: this.reader.toJSON(),
-      writer: this.writer.toJSON(),
-      type: 'channel'
+      channelKey: this.channelKeyBase64
     }
   }
 }

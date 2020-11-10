@@ -11,10 +11,7 @@ export class Connection implements IConnection {
   constructor (opts: IConnectionOptions) {
     this.reader = (opts.reader instanceof Reader) ? opts.reader : new Reader(opts.reader)
     this.writer = (opts.writer instanceof Writer) ? opts.writer : new Writer(opts.writer)
-    if (opts.type !== undefined && opts.type as string !== 'connection') {
-      throw new Error(`Can not restore a connection from a [${opts.type}]`)
-    }
-    if (bufferEquals(this.reader.channelKey, this.writer.channelKey)) {
+    if (bufferEquals(this.reader.verifyKey, this.writer.verifyKey)) {
       throw new Error('Can not create a connection with both the writer and the reader have the same id! Did you mean to restore a channel?')
     }
   }
@@ -22,8 +19,7 @@ export class Connection implements IConnection {
   toJSON (): IConnectionJSON {
     return {
       reader: this.reader.toJSON(),
-      writer: this.writer.toJSON(),
-      type: 'connection'
+      writer: this.writer.toJSON()
     }
   }
 }

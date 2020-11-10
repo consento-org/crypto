@@ -1,8 +1,20 @@
 import { bufferToString, bufferCompare } from '../../util/buffer'
 import { Buffer } from '../../util/types'
-import { createChannel, Verifier, Reader, Writer } from '..'
+import { createChannel, Verifier, Reader, Writer, Channel } from '..'
 
 describe('Permission and encryption for channels', () => {
+  it('a channel is serializable', () => {
+    const channel = createChannel()
+    const json = channel.toJSON()
+    if (!('channelKey' in json)) {
+      throw new Error('Missing channelKey')
+    }
+    expect(json.channelKey).toBe(channel.channelKeyBase64)
+    const restored = new Channel(json)
+    expect(restored.reader.decrypt(channel.writer.encrypt('hello'))).toEqual({ body: 'hello' })
+    expect(channel.reader.decrypt(restored.writer.encrypt('world'))).toEqual({ body: 'world' })
+  })
+
   it('a new receiver knows all the secrets', () => {
     const { reader: receiver, writer: sender, verifier: annonymous } = createChannel()
     expect(receiver.verifyKey.length).toBe(32)

@@ -83,34 +83,34 @@ export interface IReader extends IChannelActor {
   encryptOnly(message: IEncodable): Uint8Array
 }
 
-export type ComType = 'channel' | 'connection'
-
-export interface IComJSON<TType = ComType> {
+export interface IConnectionJSON {
   reader: IReaderJSON
   writer: IWriterJSON
-  type: TType
 }
 
-export interface IComOptions<TType = ComType> {
+export interface IConnectionOptions {
   writer: IWriterOptions
   reader: IReaderOptions
-  type?: TType
-}
-export interface ICom<TType = ComType> {
-  writer: IWriter
-  reader: IReader
-  type: TType
-  toJSON(): IComJSON<TType>
 }
 
-export type IConnection = ICom<'connection'>
-export type IConnectionJSON = IComJSON<'connection'>
-export type IConnectionOptions = IComOptions<'connection'>
-export interface IChannel extends ICom<'channel'> {
-  verifier: IVerifier
+export interface IChannelJSON {
+  channelKey: string
 }
-export type IChannelJSON = IComJSON<'channel'>
-export type IChannelOptions = IComOptions<'channel'>
+
+export interface IChannelOptions {
+  channelKey: IStringOrBuffer
+}
+
+export interface IChannel extends IChannelActor {
+  verifier: IVerifier
+  toJSON(): IChannelJSON
+}
+
+export interface IConnection {
+  writer: IWriter
+  reader: IReader
+  toJSON(): IConnectionJSON
+}
 
 export interface IHandshakeInitJSON {
   receiver: IReaderJSON
