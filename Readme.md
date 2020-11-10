@@ -47,8 +47,8 @@ const { verifier } = channel // Object that can verify messages but not de-/encr
 
 reader.readerKey // To backup/restore the receiver
 writer.senderKey // To backup/restore the sender
-reader.channelKeyBase64 === writer.channelKeyBase64 === verifier.channelKeyBase64
-// The lookup id is same here, the channelKey may be used to verify the data, can also be used for the channel
+reader.verifyKeyBase64 === writer.verifyKeyBase64 === verifier.verifyKeyBase64
+// The lookup id is same here, the verifyKey may be used to verify the data, can also be used for the channel
 
 writer.signKey // Allows the writer to sign messages, only privy to the writer
 reader.decryptKey // Allows the reader to decrypt messages, only privy to the reader

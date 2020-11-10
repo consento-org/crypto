@@ -5,11 +5,11 @@ import { createChannel, Verifier, Reader, Writer } from '..'
 describe('Permission and encryption for channels', () => {
   it('a new receiver knows all the secrets', () => {
     const { reader: receiver, writer: sender, verifier: annonymous } = createChannel()
-    expect(receiver.channelKey.length).toBe(32)
-    expect(receiver.channelKeyBase64).toBeDefined() // called twice for cache test!
-    expect(receiver.channelKeyBase64).toBe(bufferToString(annonymous.channelKey, 'base64'))
-    expect(receiver.channelKeyHex).toBeDefined() // called twice for cache test!
-    expect(receiver.channelKeyHex).toBe(bufferToString(annonymous.channelKey, 'hex'))
+    expect(receiver.verifyKey.length).toBe(32)
+    expect(receiver.verifyKeyBase64).toBeDefined() // called twice for cache test!
+    expect(receiver.verifyKeyBase64).toBe(bufferToString(annonymous.verifyKey, 'base64'))
+    expect(receiver.verifyKeyHex).toBeDefined() // called twice for cache test!
+    expect(receiver.verifyKeyHex).toBe(bufferToString(annonymous.verifyKey, 'hex'))
     expect(receiver.readerKey).toBeDefined()
     expect(receiver.readerKey.length).toBe(96)
     expect(sender.writerKey).toBeDefined()
@@ -17,11 +17,11 @@ describe('Permission and encryption for channels', () => {
   })
 
   it('restoring a partial channel from a base64 string', () => {
-    const { verifier: { channelKey: id } } = createChannel()
+    const { verifier: { verifyKey: id } } = createChannel()
     const idBase64 = bufferToString(id, 'base64')
-    const annonymous = new Verifier({ channelKey: idBase64 })
-    expect(bufferToString(annonymous.channelKey, 'base64')).toBe(idBase64)
-    expect(annonymous.channelKey.length).toBe(32)
+    const annonymous = new Verifier({ verifyKey: idBase64 })
+    expect(bufferToString(annonymous.verifyKey, 'base64')).toBe(idBase64)
+    expect(annonymous.verifyKey.length).toBe(32)
   })
 
   it('two channels have different ids', () => {
@@ -41,7 +41,7 @@ describe('Permission and encryption for channels', () => {
     const recovered = new Writer(json)
     expect(bufferToString(recovered.writerKey)).toBe(bufferToString(original.writerKey))
     expect(recovered.writerKeyBase64).toBe(original.writerKeyBase64)
-    expect(recovered.channelKey.length).toBe(32)
+    expect(recovered.verifyKey.length).toBe(32)
     expect(recovered.writerKey.length).toBe(128)
   })
 
@@ -49,7 +49,7 @@ describe('Permission and encryption for channels', () => {
     const { writer: original } = createChannel()
     const recovered = new Writer({ writerKey: original.writerKey })
     expect(bufferToString(recovered.writerKey)).toBe(bufferToString(original.writerKey))
-    expect(recovered.channelKeyHex).toBe(original.channelKeyHex)
+    expect(recovered.verifyKeyHex).toBe(original.verifyKeyHex)
   })
 
   it('a receiver can be restored from its toJSON representation', () => {
@@ -60,10 +60,10 @@ describe('Permission and encryption for channels', () => {
     const recovered = new Reader(json)
     expect(bufferToString(recovered.readerKey)).toBe(bufferToString(original.readerKey))
     expect(recovered.readerKeyBase64).toBe(original.readerKeyBase64)
-    expect(recovered.channelKeyBase64).toBe(original.channelKeyBase64)
-    const recoveredId = Buffer.from(recovered.channelKeyBase64, 'base64')
+    expect(recovered.verifyKeyBase64).toBe(original.verifyKeyBase64)
+    const recoveredId = Buffer.from(recovered.verifyKeyBase64, 'base64')
     expect(recoveredId.length).toBe(32)
-    expect(bufferCompare(recoveredId, original.channelKey)).toBe(0)
+    expect(bufferCompare(recoveredId, original.verifyKey)).toBe(0)
     const message = Buffer.from('Hello World')
     const recoveredAnnonymous = new Verifier(recovered.verifier.toJSON())
     expect(recoveredAnnonymous.verify(sender.sign(message), message)).toBe(true)
@@ -79,16 +79,16 @@ describe('Permission and encryption for channels', () => {
     expect(sender.writerKeyBase64).toBe(sender.writerKeyBase64)
   })
 
-  it('a annonymous can be restored from its toJSON representation', () => {
+  it('a verifier can be restored from its toJSON representation', () => {
     const { verifier: original } = createChannel()
     const json = original.toJSON()
-    if (!('channelKey' in json)) {
+    if (!('verifyKey' in json)) {
       throw new Error('Missing id property')
     }
-    expect(Object.keys(json)).toEqual(['channelKey'])
-    expect(typeof json.channelKey).toBe('string')
+    expect(Object.keys(json)).toEqual(['verifyKey'])
+    expect(typeof json.verifyKey).toBe('string')
     const recovered = new Verifier(json)
-    expect(recovered.channelKeyBase64).toBe(original.channelKeyBase64)
+    expect(recovered.verifyKeyBase64).toBe(original.verifyKeyBase64)
   })
 
   it('signing and verifying a message', () => {
@@ -136,19 +136,19 @@ describe('Permission and encryption for channels', () => {
   it('sender as string', () => {
     const { writer: sender } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(sender.toString()).toBe(`Writer[${sender.channelKeyBase64}]`)
+    expect(sender.toString()).toBe(`Writer[${sender.verifyKeyBase64}]`)
   })
 
   it('receiver as string', () => {
     const { reader: receiver } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(receiver.toString()).toBe(`Reader[${receiver.channelKeyBase64}]`)
+    expect(receiver.toString()).toBe(`Reader[${receiver.verifyKeyBase64}]`)
   })
 
-  it('annonymous as string', () => {
+  it('verifier as string', () => {
     const { verifier: annonymous } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(annonymous.toString()).toBe(`Verifier[${annonymous.channelKeyBase64}]`)
+    expect(annonymous.toString()).toBe(`Verifier[${annonymous.verifyKeyBase64}]`)
   })
 
   it('encrypt with out signing', () => {

@@ -22,17 +22,17 @@ export interface IDecryptionSuccess {
 export type IDecryption = IDecryptionSuccess | IDecryptionError
 
 export interface IVerifierJSON {
-  channelKey: string
+  verifyKey: string
 }
 
 export interface IVerifierOptions {
-  channelKey: IStringOrBuffer
+  verifyKey: IStringOrBuffer
 }
 
 export interface IChannelActor {
-  readonly channelKey: Uint8Array
-  readonly channelKeyBase64: string
-  readonly channelKeyHex: string
+  readonly verifyKey: Uint8Array
+  readonly verifyKeyBase64: string
+  readonly verifyKeyHex: string
 }
 
 export interface IVerifier extends IChannelActor {

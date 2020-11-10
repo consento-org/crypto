@@ -41,7 +41,7 @@ export class Reader implements IReader {
   _receiveKeyBase64?: string
   _decryptKey?: Uint8Array
   _encryptKey?: Uint8Array
-  _annonymous?: IVerifier
+  _verifier?: IVerifier
 
   constructor ({ readerKey: receiveKey }: IReaderOptions) {
     if (typeof receiveKey === 'string') {
@@ -51,16 +51,16 @@ export class Reader implements IReader {
     }
   }
 
-  get channelKey (): Uint8Array {
-    return this.verifier.channelKey
+  get verifyKey (): Uint8Array {
+    return this.verifier.verifyKey
   }
 
-  get channelKeyHex (): string {
-    return this.verifier.channelKeyHex
+  get verifyKeyHex (): string {
+    return this.verifier.verifyKeyHex
   }
 
-  get channelKeyBase64 (): string {
-    return this.verifier.channelKeyBase64
+  get verifyKeyBase64 (): string {
+    return this.verifier.verifyKeyBase64
   }
 
   get encryptKey (): Uint8Array {
@@ -71,10 +71,10 @@ export class Reader implements IReader {
   }
 
   get verifier (): IVerifier {
-    if (this._annonymous === undefined) {
-      this._annonymous = new Verifier({ channelKey: verifyKeyFromSendOrReceiveKey(this.readerKey) })
+    if (this._verifier === undefined) {
+      this._verifier = new Verifier({ verifyKey: verifyKeyFromSendOrReceiveKey(this.readerKey) })
     }
-    return this._annonymous
+    return this._verifier
   }
 
   get decryptKey (): Uint8Array {
@@ -103,7 +103,7 @@ export class Reader implements IReader {
   }
 
   toString (): string {
-    return `Reader[${this.channelKeyBase64}]`
+    return `Reader[${this.verifyKeyBase64}]`
   }
 
   encryptOnly (message: IEncodable): Uint8Array {
@@ -112,7 +112,7 @@ export class Reader implements IReader {
 
   decrypt (encrypted: IEncryptedMessage): IDecryption {
     return decryptMessage(
-      this.verifier.channelKey,
+      this.verifier.verifyKey,
       this.encryptKey,
       this.decryptKey,
       encrypted

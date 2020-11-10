@@ -8,7 +8,7 @@ const channels: { [key: string]: (msg: IEncryptedMessage) => void } = {}
 function listenTo (receiver: IReader, handler: (msg: IEncodable, unlisten?: () => void) => any): () => void {
   const unlisten = (): any => {
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-    delete channels[receiver.verifier.channelKeyHex]
+    delete channels[receiver.verifier.verifyKeyHex]
   }
   const handlerRaw = (msg: IEncryptedMessage): void => {
     const decryption = receiver.decrypt(msg)
@@ -18,7 +18,7 @@ function listenTo (receiver: IReader, handler: (msg: IEncodable, unlisten?: () =
       throw new Error(decryption.error)
     }
   }
-  channels[receiver.verifier.channelKeyHex] = handlerRaw
+  channels[receiver.verifier.verifyKeyHex] = handlerRaw
   return unlisten
 }
 function listenOnce (receiver: IReader, handler: (msg: IEncodable) => any): () => void {
@@ -30,7 +30,7 @@ function listenOnce (receiver: IReader, handler: (msg: IEncodable) => any): () =
   })
 }
 function sendTo (sender: IWriter, msg: IEncodable): void {
-  const { verifier: { channelKeyHex: idHex } } = sender
+  const { verifier: { verifyKeyHex: idHex } } = sender
   if (channels[idHex] === undefined) {
     throw new Error(`Unknown channel ${idHex}`)
   }

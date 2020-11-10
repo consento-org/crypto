@@ -60,21 +60,21 @@ export class Writer implements IWriter {
     return this._sendKeyBase64
   }
 
-  get channelKey (): Uint8Array {
-    return this.verifier.channelKey
+  get verifyKey (): Uint8Array {
+    return this.verifier.verifyKey
   }
 
-  get channelKeyHex (): string {
-    return this.verifier.channelKeyHex
+  get verifyKeyHex (): string {
+    return this.verifier.verifyKeyHex
   }
 
-  get channelKeyBase64 (): string {
-    return this.verifier.channelKeyBase64
+  get verifyKeyBase64 (): string {
+    return this.verifier.verifyKeyBase64
   }
 
   get verifier (): IVerifier {
     if (this._annonymous === undefined) {
-      this._annonymous = new Verifier({ channelKey: verifyKeyFromSendOrReceiveKey(this.writerKey) })
+      this._annonymous = new Verifier({ verifyKey: verifyKeyFromSendOrReceiveKey(this.writerKey) })
     }
     return this._annonymous
   }
@@ -84,7 +84,7 @@ export class Writer implements IWriter {
   }
 
   toString (): string {
-    return `Writer[${this.channelKeyBase64}]`
+    return `Writer[${this.verifyKeyBase64}]`
   }
 
   sign (data: Uint8Array): Uint8Array {
