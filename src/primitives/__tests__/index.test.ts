@@ -46,7 +46,7 @@ describe('Permission and encryption for channels', () => {
     const { writer: original } = createChannel()
     const json = original.toJSON()
     if (!('writerKey' in json)) {
-      throw new Error('Missing sendKey')
+      throw new Error('Missing writerKey')
     }
     expect(Object.keys(json)).toEqual(['writerKey'])
     expect(typeof json.writerKey).toBe('string')
@@ -57,7 +57,7 @@ describe('Permission and encryption for channels', () => {
     expect(recovered.writerKey.length).toBe(128)
   })
 
-  it('a sender can be restored from its sendKey only', () => {
+  it('a sender can be restored from its writerKey only', () => {
     const { writer: original } = createChannel()
     const recovered = new Writer({ writerKey: original.writerKey })
     expect(bufferToString(recovered.writerKey)).toBe(bufferToString(original.writerKey))
@@ -163,7 +163,7 @@ describe('Permission and encryption for channels', () => {
     expect(annonymous.toString()).toBe(`Verifier[${annonymous.verifyKeyBase64}]`)
   })
 
-  it('encrypt with out signing', () => {
+  it('encrypt without signing', () => {
     const { writer: sender, reader: receiver } = createChannel()
     expect(receiver.decrypt(sender.encryptOnly('hello world'))).toEqual({ body: 'hello world' })
   })
