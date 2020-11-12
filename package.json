@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "ci": "npm run lint && npm run test -- --no-watchman",
-    "test": "jest --env=node --globalSetup=./__tests__/setup.ts",
+    "test": "jest --env=node",
     "build-ts": "tsc",
     "watch-ts": "tsc -w",
     "pack": "pack-ts",
