@@ -2,9 +2,10 @@ import { Buffer } from '../util'
 
 // Structure of keys:
 //
-// RECEIVE_KEY = [ENCRYPT_KEY][VERIFY_KEY][DECRYPT_KEY]
-// SEND_KEY = [ENCRYPT_KEY][VERIFY_KEY][SIGN_KEY]
+// READER_KEY = [ENCRYPT_KEY][VERIFY_KEY][DECRYPT_KEY]
+// WRITER_KEY = [ENCRYPT_KEY][VERIFY_KEY][SIGN_KEY]
 // CHANNEL_KEY = [ENCRYPT_KEY][VERIFY_KEY][DECRYPT_KEY][SIGN_KEY]
+// CONNECTION_KEY = [IN_READER_KEY][OUT_WRITER_KEY]
 //
 
 const ENCRYPT_KEY_SIZE = 32
@@ -26,20 +27,25 @@ const SIGN_KEY_END = SIGN_KEY_START + SIGN_KEY_SIZE
 const SIGN_KEY_CHANNEL_START = DECRYPT_KEY_END
 const SIGN_KEY_CHANNEL_END = SIGN_KEY_CHANNEL_START + SIGN_KEY_SIZE
 
-export function encryptKeyFromSendOrReceiveKey (sendOrReceiveKey: Uint8Array): Uint8Array {
-  return sendOrReceiveKey.slice(ENCRYPT_KEY_START, ENCRYPT_KEY_END)
+const CONNECTION_KEY_IN_START = 0
+const CONNECTION_KEY_IN_END = CONNECTION_KEY_IN_START + DECRYPT_KEY_END
+const CONNECTION_KEY_OUT_START = CONNECTION_KEY_IN_END
+const CONNECTION_KEY_OUT_END = CONNECTION_KEY_OUT_START + SIGN_KEY_END
+
+export function encryptKeyFromSendOrReceiveKey (writerOrReaderKey: Uint8Array): Uint8Array {
+  return writerOrReaderKey.slice(ENCRYPT_KEY_START, ENCRYPT_KEY_END)
 }
 
-export function verifyKeyFromSendOrReceiveKey (sendOrReceiveKey: Uint8Array): Uint8Array {
-  return sendOrReceiveKey.slice(VERIFY_KEY_START, VERIFY_KEY_END)
+export function verifyKeyFromSendOrReceiveKey (writerOrReaderKey: Uint8Array): Uint8Array {
+  return writerOrReaderKey.slice(VERIFY_KEY_START, VERIFY_KEY_END)
 }
 
-export function decryptKeyFromReceiveKey (receiveKey: Uint8Array): Uint8Array {
-  return receiveKey.slice(DECRYPT_KEY_START, DECRYPT_KEY_END)
+export function decryptKeyFromReceiveKey (readerKey: Uint8Array): Uint8Array {
+  return readerKey.slice(DECRYPT_KEY_START, DECRYPT_KEY_END)
 }
 
-export function signKeyFromSendKey (sendKey: Uint8Array): Uint8Array {
-  return sendKey.slice(SIGN_KEY_START, SIGN_KEY_END)
+export function signKeyFromSendKey (writerKey: Uint8Array): Uint8Array {
+  return writerKey.slice(SIGN_KEY_START, SIGN_KEY_END)
 }
 
 export function signKeyFromChannelKey (channelKey: Uint8Array): Uint8Array {
@@ -52,4 +58,12 @@ export function readerKeyFromChannelKey (channelKey: Uint8Array): Uint8Array {
 
 export function writerKeyFromChannelKey (channelKey: Uint8Array): Uint8Array {
   return Buffer.concat([channelKey.slice(ENCRYPT_KEY_START, VERIFY_KEY_END), channelKey.slice(SIGN_KEY_CHANNEL_START, SIGN_KEY_CHANNEL_END)])
+}
+
+export function inReaderKeyFromConnectionKey (connectionKey: Uint8Array): Uint8Array {
+  return connectionKey.slice(CONNECTION_KEY_IN_START, CONNECTION_KEY_IN_END)
+}
+
+export function outWriterKeyFromConnectionKey (connectionKey: Uint8Array): Uint8Array {
+  return connectionKey.slice(CONNECTION_KEY_OUT_START, CONNECTION_KEY_OUT_END)
 }

@@ -19,7 +19,7 @@ for all data types.
 - `Writer` - an object containing the keys that allow to encrypt data - it can _write_ on that Channel - it can not read the data!
 - `Reader` - an object containing the keys that allow to decrypt data - it can _read_ on that Channel - it can not write to it!
 - `Verifier` - an object describing an the capability to verify if a message is part of a `Channel` without being able to read it.
-- `Connection` - an e2e encrypted setup consisting of the `Receiver` of one channel and the `Sender` of another.
+- `Connection` - an e2e encrypted setup consisting of the `Reader` of one channel, called `input` and the `Writer` of another, called `output`.
 - `Blob` - a self-contained piece of data, like an image or pdf.
 - `Handshake` - the process to connect two separate processes/devices resulting in a `Connection` for each process.
 
@@ -205,7 +205,7 @@ How the handshake works:
 9. **B**ob can now finalize the handshake
 
     ```javascript
-    const { sender: bobToAliceSender, receiver: aliceToBobReceiver } = bob.finalize(finalMessage)
+    const { output: bobToAliceOutput, input: aliceToBobInput } = bob.finalize(finalMessage)
     ```
 
 Now **A**lice and **B**ob have each two channels: one to send data to, one to receive data from.

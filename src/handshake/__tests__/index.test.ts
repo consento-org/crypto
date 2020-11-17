@@ -51,30 +51,30 @@ describe('Handshake', () => {
   it('examplary handshake', () => {
     const counter = new Counter()
     // ALICE
-    const alice = initHandshake()
-    listenOnce(alice.receiver, (acceptMessage): void => {
+    const aliceHandshake = initHandshake()
+    listenOnce(aliceHandshake.input, (acceptMessage): void => {
       counter.next(2)
-      const { connection: { writer: sender, reader: receiver }, finalMessage } = alice.confirm(acceptMessage as IHandshakeAcceptMessage)
-      listenOnce(receiver, message => {
+      const { connection: aliceToBob, finalMessage } = aliceHandshake.confirm(acceptMessage as IHandshakeAcceptMessage)
+      listenOnce(aliceToBob.input, message => {
         counter.next(4)
         expect(message).toBe('Hello Alice')
-        sendTo(sender, 'Hello Bob')
+        sendTo(aliceToBob.output, 'Hello Bob')
       })
-      sendTo(sender, finalMessage)
+      sendTo(aliceToBob.output, finalMessage)
     })
 
     // BOB
-    const bob = acceptHandshake(alice.firstMessage)
-    listenOnce(bob.reader, (finalMessage): void => {
+    const bobAccept = acceptHandshake(aliceHandshake.firstMessage)
+    listenOnce(bobAccept.input, (finalMessage): void => {
       counter.next(3)
-      const { writer: sender, reader: receiver } = bob.finalize(finalMessage as Uint8Array)
-      listenOnce(receiver, (msg): void => {
+      const bobToAlice = bobAccept.finalize(finalMessage as Uint8Array)
+      listenOnce(bobToAlice.input, (msg): void => {
         counter.next(5)
         expect(msg).toBe('Hello Bob')
       })
-      sendTo(sender, 'Hello Alice')
+      sendTo(bobToAlice.output, 'Hello Alice')
     })
-    sendTo(bob.writer, bob.acceptMessage)
+    sendTo(bobAccept.output, bobAccept.acceptMessage)
     expect(counter.current).toBe(5)
   })
   it('serialization', () => {
@@ -82,32 +82,32 @@ describe('Handshake', () => {
     // ALICE
     const aliceOriginal = initHandshake()
     const alice = new HandshakeInit(aliceOriginal.toJSON())
-    listenOnce(alice.receiver, acceptMessage => {
+    listenOnce(alice.input, acceptMessage => {
       counter.next(2)
       const confirmationOriginal = alice.confirm(acceptMessage as IHandshakeAcceptMessage)
       const confirmation = new HandshakeConfirmation(confirmationOriginal.toJSON())
-      const { connection: { writer: sender, reader: receiver }, finalMessage } = confirmation
-      listenOnce(receiver, message => {
+      const { connection, finalMessage } = confirmation
+      listenOnce(connection.input, message => {
         counter.next(4)
         expect(message).toBe('Hello Alice')
-        sendTo(sender, 'Hello Bob')
+        sendTo(connection.output, 'Hello Bob')
       })
-      sendTo(sender, finalMessage)
+      sendTo(connection.output, finalMessage)
     })
 
     // BOB
     const bobOriginal = acceptHandshake(alice.firstMessage)
-    const bob = new HandshakeAccept(bobOriginal.toJSON())
-    listenOnce(bob.reader, finalMessage => {
+    const bobAccept = new HandshakeAccept(bobOriginal.toJSON())
+    listenOnce(bobAccept.input, finalMessage => {
       counter.next(3)
-      const { writer: sender, reader: receiver } = bob.finalize(finalMessage as Uint8Array)
-      listenOnce(receiver, msg => {
+      const connection = bobAccept.finalize(finalMessage as Uint8Array)
+      listenOnce(connection.input, msg => {
         counter.next(5)
         expect(msg).toBe('Hello Bob')
       })
-      sendTo(sender, 'Hello Alice')
+      sendTo(connection.output, 'Hello Alice')
     })
-    sendTo(bob.writer, bob.acceptMessage)
+    sendTo(bobAccept.output, bobAccept.acceptMessage)
     expect(counter.current).toBe(5)
   })
 })

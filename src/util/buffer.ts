@@ -38,6 +38,11 @@ export function anyToBuffer (message: IEncodable): Uint8Array {
   return concatUint8Arrays([MESSAGE_JSON, Buffer.from(JSON.stringify(message))])
 }
 
+export function isStringOrBuffer (input: any): input is IStringOrBuffer {
+  if (typeof input === 'string') return true
+  if (input instanceof Uint8Array) return true
+  return false
+}
 export function toBuffer (stringOrBuffer: IStringOrBuffer): Uint8Array {
   if (typeof stringOrBuffer === 'string') {
     return Buffer.from(stringOrBuffer, 'base64')

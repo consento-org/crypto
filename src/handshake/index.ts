@@ -1,4 +1,4 @@
-import { Buffer, toBuffer, bufferToString } from '../util'
+import { Buffer, toBuffer, bufferToString, isStringOrBuffer } from '../util'
 import { IHandshakeInit, IReader, IHandshakeInitOptions, IHandshakeAccept, IHandshakeAcceptMessage, IHandshakeAcceptOptions, IHandshakeConfirmation, IHandshakeAcceptJSON, IHandshakeConfirmationOptions, IHandshakeConfirmationJSON, IConnection, IHandshakeInitJSON } from '../types'
 import { createChannel, Reader, Writer, Connection } from '../primitives'
 import { randomBuffer } from '../util/randomBuffer'
@@ -28,7 +28,7 @@ function createHandshake (): { secretKey: Uint8Array, publicKey: Uint8Array } {
 }
 function processHandshake (msg: Uint8Array): {
   token: Uint8Array
-  sendKey: Uint8Array
+  writerKey: Uint8Array
 } {
   if (msg[0] !== HANDSHAKE_MSG_VERSION[0]) {
     throw Object.assign(new Error(`Error while processing handshake: Unknown handshake format: ${msg[0]}`), { code: 'unknown-message-format', messageFormat: msg[0] })
@@ -38,24 +38,24 @@ function processHandshake (msg: Uint8Array): {
   }
   return {
     token: msg.slice(1, 33),
-    sendKey: msg.slice(33)
+    writerKey: msg.slice(33)
   }
 }
 
 export class HandshakeInit implements IHandshakeInit {
-  receiver: IReader
+  input: IReader
   firstMessage: Uint8Array
   handshakeSecret: Uint8Array
 
-  constructor ({ receiver, handshakeSecret, firstMessage }: IHandshakeInitOptions) {
-    this.receiver = new Reader(receiver)
+  constructor ({ input, handshakeSecret, firstMessage }: IHandshakeInitOptions) {
+    this.input = isStringOrBuffer(input) ? new Reader({ readerKey: input }) : 'readerKey' in input ? new Reader({ readerKey: input.readerKey }) : input
     this.handshakeSecret = toBuffer(handshakeSecret)
     this.firstMessage = toBuffer(firstMessage)
   }
 
   toJSON (): IHandshakeInitJSON {
     return {
-      receiver: this.receiver.toJSON(),
+      input: this.input.toJSON(),
       firstMessage: bufferToString(this.firstMessage, 'base64'),
       handshakeSecret: bufferToString(this.handshakeSecret, 'base64')
     }
@@ -68,11 +68,10 @@ export class HandshakeInit implements IHandshakeInit {
     if (!(sendKey instanceof Uint8Array)) {
       throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${sendKey.constructor.name}`), { code: 'invalid-message', sendKey })
     }
-    const aliceSender = new Writer({ writerKey: sendKey })
     return new HandshakeConfirmation({
       connection: new Connection({
-        writer: aliceSender,
-        reader: backChannel.reader
+        output: new Writer({ writerKey: sendKey }),
+        input: backChannel.reader
       }),
       // In case you are wondering why we not just simply return "backChannel" as sender
       // but instead pass it in two messages: the reason is that without this step
@@ -100,8 +99,8 @@ export class HandshakeAccept extends Connection implements IHandshakeAccept {
 
   finalize (message: Uint8Array): IConnection {
     return new Connection({
-      reader: this.reader,
-      writer: new Writer({ writerKey: message })
+      input: this.input,
+      output: new Writer({ writerKey: message })
     })
   }
 }
@@ -124,15 +123,15 @@ export class HandshakeConfirmation implements IHandshakeConfirmation {
 }
 
 export function initHandshake (): HandshakeInit {
-  const { reader: receiver, writer: sender } = createChannel()
+  const channel = createChannel()
   const handshake = createHandshake()
   return new HandshakeInit({
-    receiver,
+    input: channel.reader,
     handshakeSecret: handshake.secretKey,
     firstMessage: Buffer.concat([
       HANDSHAKE_MSG_VERSION,
       handshake.publicKey,
-      sender.writerKey
+      channel.writer.writerKey
     ])
   })
 }
@@ -140,14 +139,14 @@ export function initHandshake (): HandshakeInit {
 export function acceptHandshake (firstMessage: Uint8Array): IHandshakeAccept {
   const {
     token,
-    sendKey
+    writerKey
   } = processHandshake(firstMessage)
   const handshake = createHandshake()
   const secretKey = computeSecret(handshake.secretKey, token)
   const { reader: receiver, writer: sender } = createChannel()
   return new HandshakeAccept({
-    writer: { writerKey: sendKey },
-    reader: receiver,
+    output: { writerKey },
+    input: receiver,
     acceptMessage: {
       token: bufferToString(handshake.publicKey, 'base64'),
       secret: bufferToString(encrypt(secretKey, sender.writerKey), 'base64')

@@ -74,13 +74,14 @@ export interface IReader extends IChannelActor {
 }
 
 export interface IConnectionJSON {
-  reader: IReaderJSON
-  writer: IWriterJSON
+  connectionKey: string
 }
 
-export interface IConnectionOptions {
-  writer: IWriterOptions
-  reader: IReaderOptions
+export type IConnectionOptions = {
+  connectionKey: IStringOrBuffer
+} | {
+  input: IStringOrBuffer | IReader | IReaderOptions
+  output: IStringOrBuffer | IWriter | IWriterOptions
 }
 
 export interface IChannelJSON {
@@ -97,25 +98,27 @@ export interface IChannel extends IChannelActor {
 }
 
 export interface IConnection {
-  writer: IWriter
-  reader: IReader
+  output: IWriter
+  input: IReader
+  connectionKey: Uint8Array
+  connectionKeyBase64: string
   toJSON(): IConnectionJSON
 }
 
 export interface IHandshakeInitJSON {
-  receiver: IReaderJSON
+  input: IReaderJSON
   firstMessage: string
   handshakeSecret: string
 }
 
 export interface IHandshakeInitOptions {
-  receiver: IReader | IReaderOptions
+  input: IReader | IReaderOptions
   firstMessage: IStringOrBuffer
   handshakeSecret: IStringOrBuffer
 }
 
 export interface IHandshakeInit {
-  receiver: IReader
+  input: IReader
   firstMessage: Uint8Array
   handshakeSecret: Uint8Array
   toJSON(): IHandshakeInitJSON
@@ -131,7 +134,7 @@ export interface IHandshakeAcceptJSON extends IConnectionJSON {
   acceptMessage: IHandshakeAcceptMessage
 }
 
-export interface IHandshakeAcceptOptions extends IConnectionOptions {
+export type IHandshakeAcceptOptions = IConnectionOptions & {
   acceptMessage: IHandshakeAcceptMessage
 }
 
