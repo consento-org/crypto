@@ -32,9 +32,7 @@ const { createChannel } = require('@consento/crypto')
 const { writer, reader } = createChannel()
 
 const encrypted = writer.encrypt('hello world')
-const decrypted = reader.decrypt(encrypted)
-
-decrypted.body === 'hello world'
+const decrypted = reader.decrypt(encrypted) === 'hello world'
 ```
 
 You can create a new communication channel with the simple `createChannel` method.
@@ -213,8 +211,8 @@ How the handshake works:
 Now **A**lice and **B**ob have each two channels: one to send data to, one to receive data from.
 
 ```javascript
-bobToAliceReceiver.decrypt(aliceToBobSender.encrypt('Hello Bob!')).body // Hello Bob!
-aliceToBobReceiver.decrypt(bobToAliceSender.encrypt('Hello Alice!')).body // Hello Alice!
+bobToAliceReceiver.decrypt(aliceToBobSender.encrypt('Hello Bob!')) // Hello Bob!
+aliceToBobReceiver.decrypt(bobToAliceSender.encrypt('Hello Alice!')) // Hello Alice!
 ```
 
 ## Blob Support

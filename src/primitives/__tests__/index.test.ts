@@ -11,8 +11,8 @@ describe('Permission and encryption for channels', () => {
     }
     expect(json.channelKey).toBe(channel.channelKeyBase64)
     const restored = new Channel(json)
-    expect(restored.reader.decrypt(channel.writer.encrypt('hello'))).toEqual({ body: 'hello' })
-    expect(channel.reader.decrypt(restored.writer.encrypt('world'))).toEqual({ body: 'world' })
+    expect(restored.reader.decrypt(channel.writer.encrypt('hello'))).toEqual('hello')
+    expect(channel.reader.decrypt(restored.writer.encrypt('world'))).toEqual('world')
   })
 
   it('a new receiver knows all the secrets', () => {
@@ -80,8 +80,8 @@ describe('Permission and encryption for channels', () => {
     const recoveredAnnonymous = new Verifier(recovered.verifier.toJSON())
     expect(recoveredAnnonymous.verify(sender.sign(message), message)).toBe(true)
     expect(recovered.verifier.verify(sender.sign(message), message)).toBe(true)
-    expect(recovered.decrypt(sender.encrypt('hi!'))).toEqual({ body: 'hi!' })
-    expect(original.decrypt(sender.encrypt('hi!'))).toEqual({ body: 'hi!' })
+    expect(recovered.decrypt(sender.encrypt('hi!'))).toEqual('hi!')
+    expect(original.decrypt(sender.encrypt('hi!'))).toEqual('hi!')
   })
 
   it('a receiver can be restored from its receiveKey only', () => {
@@ -131,7 +131,7 @@ describe('Permission and encryption for channels', () => {
     const { reader: receiver, writer: sender } = createChannel()
     const original = 'Hello World'
     const message = sender.encrypt(original)
-    expect(receiver.decrypt(message)).toEqual({ body: original })
+    expect(receiver.decrypt(message)).toEqual(original)
   })
 
   it('multiple encryptions return different encryptions', () => {
@@ -165,6 +165,6 @@ describe('Permission and encryption for channels', () => {
 
   it('encrypt without signing', () => {
     const { writer: sender, reader: receiver } = createChannel()
-    expect(receiver.decrypt(sender.encryptOnly('hello world'))).toEqual({ body: 'hello world' })
+    expect(receiver.decrypt(sender.encryptOnly('hello world'))).toEqual('hello world')
   })
 })

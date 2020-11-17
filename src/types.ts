@@ -11,16 +11,6 @@ export enum EDecryptionError {
   invalidSignature = 'invalid-signature'
 }
 
-export interface IDecryptionError {
-  error: EDecryptionError
-}
-
-export interface IDecryptionSuccess {
-  body: IEncodable
-}
-
-export type IDecryption = IDecryptionSuccess | IDecryptionError
-
 export interface IVerifierJSON {
   verifyKey: string
 }
@@ -79,7 +69,7 @@ export interface IReader extends IChannelActor {
    *
    * @param encrypted signed or unsigned message
    */
-  decrypt(encrypted: IEncryptedMessage | Uint8Array): IDecryption
+  decrypt(encrypted: IEncryptedMessage | Uint8Array): IEncodable
   encryptOnly(message: IEncodable): Uint8Array
 }
 

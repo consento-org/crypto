@@ -12,28 +12,22 @@ const {
   sodium_malloc: malloc
 } = sodium.default
 
-function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): IDecryption {
+function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): IEncodable {
   let bodyIn: Uint8Array
   if (message instanceof Uint8Array) {
     bodyIn = message
   } else {
     bodyIn = message.body
-    if (!verify(message.signature, bodyIn, verifyKey)) {
-      return {
-        error: EDecryptionError.invalidSignature
-      }
+    if (!verify(verifyKey, message.signature, bodyIn)) {
+      throw Object.assign(new Error('Invalid signature'), { code: EDecryptionError.invalidSignature })
     }
   }
   const messageDecrypted = malloc(bodyIn.length - CRYPTO_BOX_SEALBYTES)
   const successful = boxSealOpen(messageDecrypted, bodyIn, writeKey, readKey)
   if (!successful) {
-    return {
-      error: EDecryptionError.invalidEncryption
-    }
+    throw Object.assign(new Error('Can not decrypt data. Is it encryted with different key?'), { code: EDecryptionError.invalidEncryption })
   }
-  return {
-    body: bufferToAny(messageDecrypted)
-  }
+  return bufferToAny(messageDecrypted)
 }
 
 export class Reader implements IReader {
@@ -110,7 +104,7 @@ export class Reader implements IReader {
     return encryptMessage(this.encryptKey, message)
   }
 
-  decrypt (encrypted: IEncryptedMessage): IDecryption {
+  decrypt (encrypted: IEncryptedMessage): IEncodable {
     return decryptMessage(
       this.verifier.verifyKey,
       this.encryptKey,

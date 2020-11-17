@@ -12,11 +12,7 @@ function listenTo (receiver: IReader, handler: (msg: IEncodable, unlisten?: () =
   }
   const handlerRaw = (msg: IEncryptedMessage): void => {
     const decryption = receiver.decrypt(msg)
-    if ('body' in decryption) {
-      handler(decryption.body, unlisten)
-    } else {
-      throw new Error(decryption.error)
-    }
+    handler(decryption, unlisten)
   }
   channels[receiver.verifier.verifyKeyHex] = handlerRaw
   return unlisten
