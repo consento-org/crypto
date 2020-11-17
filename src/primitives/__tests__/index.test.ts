@@ -1,6 +1,7 @@
 import { bufferToString, bufferCompare } from '../../util/buffer'
 import { Buffer } from '../../util/types'
 import { createChannel, Verifier, Reader, Writer, Channel } from '..'
+import prettyHash from 'pretty-hash'
 
 describe('Permission and encryption for channels', () => {
   it('a channel is serializable', () => {
@@ -148,19 +149,19 @@ describe('Permission and encryption for channels', () => {
   it('sender as string', () => {
     const { writer: sender } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(sender.toString()).toBe(`Writer[${sender.verifyKeyBase64}]`)
+    expect(sender.toString()).toBe(`Writer(${prettyHash(sender.verifyKey)})`)
   })
 
   it('receiver as string', () => {
     const { reader: receiver } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(receiver.toString()).toBe(`Reader[${receiver.verifyKeyBase64}]`)
+    expect(receiver.toString()).toBe(`Reader(${prettyHash(receiver.verifyKey)})`)
   })
 
   it('verifier as string', () => {
     const { verifier: annonymous } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(annonymous.toString()).toBe(`Verifier[${annonymous.verifyKeyBase64}]`)
+    expect(annonymous.toString()).toBe(`Verifier(${prettyHash(annonymous.verifyKey)})`)
   })
 
   it('encrypt without signing', () => {

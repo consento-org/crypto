@@ -1,13 +1,16 @@
-import { bufferToString, toBuffer } from '../util'
+import { bufferToString, Inspectable, toBuffer } from '../util'
 import { IVerifier, IVerifierJSON, IVerifierOptions, IEncryptedMessage } from '../types'
 import { verify, verifyMessage } from './fn'
+import { InspectOptions } from 'inspect-custom-symbol'
+import prettyHash from 'pretty-hash'
 
-export class Verifier implements IVerifier {
+export class Verifier extends Inspectable implements IVerifier {
   _verifyKey?: Uint8Array
   _verifyKeyBase64?: string
   _verifyKeyHex?: string
 
   constructor ({ verifyKey: id }: IVerifierOptions) {
+    super()
     if (typeof id === 'string') {
       this._verifyKeyBase64 = id
     } else {
@@ -42,8 +45,9 @@ export class Verifier implements IVerifier {
     }
   }
 
-  toString (): string {
-    return `Verifier[${this.verifyKeyBase64}]`
+  _inspect (_: number, { stylize }: InspectOptions): string {
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    return `Verifier(${stylize(prettyHash(this.verifyKey), 'string')})`
   }
 
   verify (signature: Uint8Array, body: Uint8Array): boolean {

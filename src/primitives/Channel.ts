@@ -6,11 +6,13 @@ import {
   IChannelJSON,
   IChannelOptions
 } from '../types'
-import { Buffer, bufferToString, toBuffer } from '../util'
+import { Buffer, bufferToString, toBuffer, Inspectable } from '../util'
 import { Reader } from './Reader'
 import { Writer } from './Writer'
 import * as sodium from 'sodium-universal'
 import { readerKeyFromChannelKey, writerKeyFromChannelKey } from './key'
+import { InspectOptions } from 'inspect-custom-symbol'
+import prettyHash from 'pretty-hash'
 
 const {
   sodium_malloc: malloc,
@@ -51,13 +53,14 @@ export function createChannel (): Channel {
   return new Channel({ channelKey: Buffer.concat([encrypt.publicKey, sign.publicKey, encrypt.privateKey, sign.privateKey]) })
 }
 
-export class Channel implements IChannel {
+export class Channel extends Inspectable implements IChannel {
   _reader?: IReader
   _writer?: IWriter
   _channelKey?: Uint8Array
   _channelKeyBase64?: string
 
   constructor ({ channelKey }: IChannelOptions) {
+    super()
     if (typeof channelKey === 'string') {
       this._channelKeyBase64 = channelKey
     } else {
@@ -109,8 +112,9 @@ export class Channel implements IChannel {
     return this.reader.verifier
   }
 
-  toString (): string {
-    return `Channel[${this.verifyKeyBase64}]`
+  _inspect (_: number, { stylize }: InspectOptions): string {
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    return `Channel(${stylize(prettyHash(this.reader.verifyKey), 'string')})`
   }
 
   toJSON (): IChannelJSON {

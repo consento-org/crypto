@@ -1,10 +1,12 @@
 import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, decryptKeyFromReceiveKey, verifyKeyFromSendOrReceiveKey } from './key'
-import { bufferToString, IEncodable, toBuffer } from '../util'
+import { bufferToString, IEncodable, Inspectable, toBuffer } from '../util'
 import { encryptMessage, decryptMessage } from './fn'
+import { InspectOptions } from 'inspect-custom-symbol'
+import prettyHash from 'pretty-hash'
 
-export class Reader implements IReader {
+export class Reader extends Inspectable implements IReader {
   _receiveKey?: Uint8Array
   _receiveKeyBase64?: string
   _decryptKey?: Uint8Array
@@ -12,6 +14,7 @@ export class Reader implements IReader {
   _verifier?: IVerifier
 
   constructor ({ readerKey: receiveKey }: IReaderOptions) {
+    super()
     if (typeof receiveKey === 'string') {
       this._receiveKeyBase64 = receiveKey
     } else {
@@ -70,8 +73,9 @@ export class Reader implements IReader {
     return { readerKey: this.readerKeyBase64 }
   }
 
-  toString (): string {
-    return `Reader[${this.verifyKeyBase64}]`
+  _inspect (_: number, { stylize }: InspectOptions): string {
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    return `Reader(${stylize(prettyHash(this.verifyKey), 'string')})`
   }
 
   encryptOnly (message: IEncodable): Uint8Array {

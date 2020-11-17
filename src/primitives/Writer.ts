@@ -1,10 +1,12 @@
 import { IVerifier, IWriter, IWriterJSON, IEncryptedMessage, IWriterOptions } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, signKeyFromSendKey, verifyKeyFromSendOrReceiveKey } from './key'
-import { bufferToString, toBuffer, IEncodable } from '../util'
+import { bufferToString, toBuffer, IEncodable, Inspectable } from '../util'
 import { encryptMessage, sign } from './fn'
+import { InspectOptions } from 'inspect-custom-symbol'
+import prettyHash from 'pretty-hash'
 
-export class Writer implements IWriter {
+export class Writer extends Inspectable implements IWriter {
   _sendKey?: Uint8Array
   _sendKeyBase64?: string
   _annonymous?: IVerifier
@@ -12,6 +14,7 @@ export class Writer implements IWriter {
   _encryptKey?: Uint8Array
 
   constructor ({ writerKey: sendKey }: IWriterOptions) {
+    super()
     if (typeof sendKey === 'string') {
       this._sendKeyBase64 = sendKey
     } else {
@@ -70,8 +73,9 @@ export class Writer implements IWriter {
     return { writerKey: this.writerKeyBase64 }
   }
 
-  toString (): string {
-    return `Writer[${this.verifyKeyBase64}]`
+  _inspect (_: number, { stylize }: InspectOptions): string {
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    return `Writer(${stylize(prettyHash(this.verifyKey), 'string')})`
   }
 
   sign (data: Uint8Array): Uint8Array {

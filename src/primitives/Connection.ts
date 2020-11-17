@@ -2,16 +2,19 @@ import { IConnection, IReader, IWriter, IConnectionJSON, IConnectionOptions } fr
 import { Reader } from './Reader'
 import { Writer } from './Writer'
 import { bufferEquals, bufferToString, isStringOrBuffer, toBuffer } from '../util/buffer'
-import { Buffer } from '../util'
+import { Buffer, Inspectable } from '../util'
 import { inReaderKeyFromConnectionKey, outWriterKeyFromConnectionKey } from './key'
+import { InspectOptions } from 'inspect-custom-symbol'
+import prettyHash from 'pretty-hash'
 
-export class Connection implements IConnection {
+export class Connection extends Inspectable implements IConnection {
   _input?: IReader
   _output?: IWriter
   _connectionKey?: Uint8Array
   _connectionKeyBase64?: string
 
   constructor (opts: IConnectionOptions) {
+    super()
     if ('connectionKey' in opts) {
       if (typeof opts.connectionKey === 'string') {
         this._connectionKeyBase64 = opts.connectionKey
@@ -62,7 +65,8 @@ export class Connection implements IConnection {
     }
   }
 
-  toString (): string {
-    return `Connection[in=${this.input.verifyKeyBase64}, out=${this.output.verifyKeyBase64}]`
+  _inspect (_: number, { stylize }: InspectOptions): string {
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    return `Connection(input=${stylize(prettyHash(this.input.verifyKey), 'string')}, output=${stylize(prettyHash(this.output.verifyKey), 'string')})`
   }
 }
