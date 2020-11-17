@@ -1,34 +1,8 @@
-import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions, IDecryption, EDecryptionError } from '../types'
+import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, decryptKeyFromReceiveKey, verifyKeyFromSendOrReceiveKey } from './key'
-import { bufferToAny, bufferToString, IEncodable, toBuffer } from '../util'
-import { encryptMessage } from '../util/encryptMessage'
-import * as sodium from 'sodium-universal'
-
-const {
-  crypto_box_SEALBYTES: CRYPTO_BOX_SEALBYTES,
-  crypto_box_seal_open: boxSealOpen,
-  crypto_sign_verify_detached: verify,
-  sodium_malloc: malloc
-} = sodium.default
-
-function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): IEncodable {
-  let bodyIn: Uint8Array
-  if (message instanceof Uint8Array) {
-    bodyIn = message
-  } else {
-    bodyIn = message.body
-    if (!verify(verifyKey, message.signature, bodyIn)) {
-      throw Object.assign(new Error('Invalid signature'), { code: EDecryptionError.invalidSignature })
-    }
-  }
-  const messageDecrypted = malloc(bodyIn.length - CRYPTO_BOX_SEALBYTES)
-  const successful = boxSealOpen(messageDecrypted, bodyIn, writeKey, readKey)
-  if (!successful) {
-    throw Object.assign(new Error('Can not decrypt data. Is it encryted with different key?'), { code: EDecryptionError.invalidEncryption })
-  }
-  return bufferToAny(messageDecrypted)
-}
+import { bufferToString, IEncodable, toBuffer } from '../util'
+import { encryptMessage, decryptMessage } from './fn'
 
 export class Reader implements IReader {
   _receiveKey?: Uint8Array

@@ -1,8 +1,6 @@
 import { bufferToString, toBuffer } from '../util'
 import { IVerifier, IVerifierJSON, IVerifierOptions, IEncryptedMessage } from '../types'
-import * as sodium from 'sodium-universal'
-
-const { crypto_sign_verify_detached: verify } = sodium.default
+import { verify, verifyMessage } from './fn'
 
 export class Verifier implements IVerifier {
   _verifyKey?: Uint8Array
@@ -49,10 +47,10 @@ export class Verifier implements IVerifier {
   }
 
   verify (signature: Uint8Array, body: Uint8Array): boolean {
-    return verify(signature, body, this.verifyKey)
+    return verify(this.verifyKey, signature, body)
   }
 
   verifyMessage (message: IEncryptedMessage): boolean {
-    return verify(message.signature, message.body, this.verifyKey)
+    return verifyMessage(this.verifyKey, message)
   }
 }
