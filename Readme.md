@@ -54,7 +54,7 @@ reader.decryptKey // Allows the reader to decrypt messages, only privy to the re
 writer.encryptKey.equals(receiver.encryptKey) // Key to encrypt messages, receiver _can_ write but not sign the message, thus it exists pro-forma
 ```
 
-All objects create with `createChannel` are well de-/serializable:
+All objects created using `createChannel` are well de-/serializable:
 
 ```javascript
 const { createChannel, Reader, Writer, Verifier } = require('@consento/crypto')
