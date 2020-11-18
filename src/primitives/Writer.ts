@@ -7,18 +7,18 @@ import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
 
 export class Writer extends Inspectable implements IWriter {
-  _sendKey?: Uint8Array
-  _sendKeyBase64?: string
+  _writerKey?: Uint8Array
+  _writerKeyBase64?: string
   _annonymous?: IVerifier
   _signKey?: Uint8Array
   _encryptKey?: Uint8Array
 
-  constructor ({ writerKey: sendKey }: IWriterOptions) {
+  constructor ({ writerKey }: IWriterOptions) {
     super()
-    if (typeof sendKey === 'string') {
-      this._sendKeyBase64 = sendKey
+    if (typeof writerKey === 'string') {
+      this._writerKeyBase64 = writerKey
     } else {
-      this._sendKey = sendKey
+      this._writerKey = writerKey
     }
   }
 
@@ -37,17 +37,17 @@ export class Writer extends Inspectable implements IWriter {
   }
 
   get writerKey (): Uint8Array {
-    if (this._sendKey === undefined) {
-      this._sendKey = toBuffer(this._sendKeyBase64 as unknown as string)
+    if (this._writerKey === undefined) {
+      this._writerKey = toBuffer(this._writerKeyBase64 as unknown as string)
     }
-    return this._sendKey
+    return this._writerKey
   }
 
   get writerKeyBase64 (): string {
-    if (this._sendKeyBase64 === undefined) {
-      this._sendKeyBase64 = bufferToString(this._sendKey as unknown as Uint8Array, 'base64')
+    if (this._writerKeyBase64 === undefined) {
+      this._writerKeyBase64 = bufferToString(this._writerKey as unknown as Uint8Array, 'base64')
     }
-    return this._sendKeyBase64
+    return this._writerKeyBase64
   }
 
   get verifyKey (): Uint8Array {
