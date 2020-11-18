@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
-import { IEncodable, IStringOrBuffer } from './util/types'
+import { IStringOrBuffer } from './util/types'
 
 export interface IEncryptedMessage {
   signature: Uint8Array
@@ -57,8 +57,8 @@ export interface IWriter extends IChannelActor {
   readonly signKey: Uint8Array
   readonly verifier: IVerifier
   sign(data: Uint8Array): Uint8Array
-  encrypt(message: IEncodable): IEncryptedMessage
-  encryptOnly(message: IEncodable): Uint8Array
+  encrypt(message: any): IEncryptedMessage
+  encryptOnly(message: any): Uint8Array
 }
 
 export interface IReaderJSON {
@@ -79,8 +79,8 @@ export interface IReader extends IChannelActor {
    *
    * @param encrypted signed or unsigned message
    */
-  decrypt(encrypted: IEncryptedMessage | Uint8Array): IEncodable
-  encryptOnly(message: IEncodable): Uint8Array
+  decrypt(encrypted: IEncryptedMessage | Uint8Array): any
+  encryptOnly(message: any): Uint8Array
 }
 
 export interface IConnectionJSON {

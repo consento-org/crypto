@@ -1,8 +1,7 @@
 import { Buffer } from 'buffer'
 import * as sodium from 'sodium-universal'
-import { anyToBuffer, bufferToAny } from './buffer'
 import { randomBuffer } from './randomBuffer'
-import { IEncodable } from './types'
+import { encode, decode } from '@msgpack/msgpack'
 
 const {
   crypto_secretbox_KEYBYTES: CRYPTO_SECRETBOX_KEYBYTES,
@@ -25,20 +24,20 @@ export function createSecret (): Uint8Array {
   return randomBuffer(CRYPTO_SECRETBOX_KEYBYTES)
 }
 
-export function encrypt (secretKey: Uint8Array, body: IEncodable): Uint8Array {
+export function encrypt (secretKey: Uint8Array, body: any): Uint8Array {
   const nonce = randomBuffer(CRYPTO_SECRETBOX_NONCEBYTES)
-  const message = anyToBuffer(body)
+  const message = encode(body)
   const ciphertext = malloc(CRYPTO_SECRETBOX_MACBYTES + message.length)
   secretBoxEasy(ciphertext, message, nonce, secretKey)
   const buffer = Buffer.concat([nonce, ciphertext])
   return buffer
 }
 
-export function decrypt (secretKey: Uint8Array, encrypted: Uint8Array): IEncodable {
+export function decrypt (secretKey: Uint8Array, encrypted: Uint8Array): any {
   const [nonce, ciphertext] = split(encrypted, CRYPTO_SECRETBOX_NONCEBYTES)
   const decrypted = malloc(ciphertext.length - CRYPTO_SECRETBOX_MACBYTES)
   if (!secretBoxOpenEasy(decrypted, ciphertext, nonce, secretKey)) {
     throw new Error('cant-decrypt')
   }
-  return bufferToAny(decrypted)
+  return decode(decrypted)
 }

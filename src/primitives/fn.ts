@@ -1,7 +1,6 @@
 import { EDecryptionError, IEncryptedMessage, IEncryptionKeys, ISignKeys } from '../types'
 import * as sodium from 'sodium-universal'
-import { bufferToAny, anyToBuffer } from '../util/buffer'
-import { IEncodable } from '../util/types'
+import { encode, decode } from '@msgpack/msgpack'
 
 const {
   crypto_box_PUBLICKEYBYTES: CRYPTO_BOX_PUBLICKEYBYTES,
@@ -37,8 +36,8 @@ export function createSignKeys (): ISignKeys {
   return keys
 }
 
-export function encryptMessage (writeKey: Uint8Array, message: IEncodable): Uint8Array {
-  const msgBuffer = anyToBuffer(message)
+export function encryptMessage (writeKey: Uint8Array, message: any): Uint8Array {
+  const msgBuffer = encode(message)
   const body = malloc(msgBuffer.length + CRYPTO_BOX_SEALBYTES)
   boxSeal(body, msgBuffer, writeKey)
   return body
@@ -52,7 +51,7 @@ export function verifyMessage (verifyKey: Uint8Array, message: IEncryptedMessage
   return _verify(message.signature, message.body, verifyKey)
 }
 
-export function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): IEncodable {
+export function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): any {
   let bodyIn: Uint8Array
   if (message instanceof Uint8Array) {
     bodyIn = message
@@ -67,7 +66,7 @@ export function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, rea
   if (!successful) {
     throw Object.assign(new Error('Can not decrypt data. Is it encryted with different key?'), { code: EDecryptionError.invalidEncryption })
   }
-  return bufferToAny(messageDecrypted)
+  return decode(messageDecrypted)
 }
 
 export function sign (signKey: Uint8Array, body: Uint8Array): Uint8Array {

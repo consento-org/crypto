@@ -66,7 +66,7 @@ export class HandshakeInit implements IHandshakeInit {
     const backChannel = createChannel()
     const sendKey = decrypt(secretKey, Buffer.from(accept.secret, 'base64'))
     if (!(sendKey instanceof Uint8Array)) {
-      throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${sendKey.constructor.name}`), { code: 'invalid-message', sendKey })
+      throw Object.assign(new Error(`Expected buffer in decrypted message, got: ${String(sendKey.constructor.name)}`), { code: 'invalid-message', sendKey })
     }
     return new HandshakeConfirmation({
       connection: new Connection({

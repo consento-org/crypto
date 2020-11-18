@@ -1,7 +1,7 @@
 import { IVerifier, IWriter, IWriterJSON, IEncryptedMessage, IWriterOptions } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, signKeyFromSendKey, verifyKeyFromSendOrReceiveKey } from './key'
-import { bufferToString, toBuffer, IEncodable, Inspectable } from '../util'
+import { bufferToString, toBuffer, Inspectable } from '../util'
 import { encryptMessage, sign } from './fn'
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
@@ -82,11 +82,11 @@ export class Writer extends Inspectable implements IWriter {
     return sign(this.signKey, data)
   }
 
-  encryptOnly (message: IEncodable): Uint8Array {
+  encryptOnly (message: any): Uint8Array {
     return encryptMessage(this.encryptKey, message)
   }
 
-  encrypt (message: IEncodable): IEncryptedMessage {
+  encrypt (message: any): IEncryptedMessage {
     const body = encryptMessage(this.encryptKey, message)
     return {
       signature: sign(this.signKey, body),

@@ -1,15 +1,4 @@
-import { IEncodable, IStringOrBuffer, EEncoding, Buffer } from './types'
-
-function enumBuffer (num: number): Uint8Array {
-  const buf = new Uint8Array(1)
-  buf[0] = num
-  return buf
-}
-
-const MESSAGE_BINARY_UINT8 = enumBuffer(1)
-const MESSAGE_BINARY_BUFFER = enumBuffer(2)
-const MESSAGE_STRING = enumBuffer(3)
-const MESSAGE_JSON = enumBuffer(4)
+import { IStringOrBuffer, EEncoding, Buffer } from './types'
 
 export function concatUint8Arrays (arrays: Uint8Array[]): Uint8Array {
   const byteLength = arrays.reduce((len, array) => len + array.byteLength, 0)
@@ -20,22 +9,6 @@ export function concatUint8Arrays (arrays: Uint8Array[]): Uint8Array {
     offset += array.byteLength
   }
   return combined
-}
-
-export function anyToBuffer (message: IEncodable): Uint8Array {
-  if (typeof message === 'function') {
-    throw Object.assign(new Error('Cannot turn a function into a buffer'), { code: 'function-not-supported' })
-  }
-  if (message instanceof Buffer) {
-    return Buffer.concat([MESSAGE_BINARY_BUFFER, message] as Uint8Array[])
-  }
-  if (message instanceof Uint8Array) {
-    return concatUint8Arrays([MESSAGE_BINARY_UINT8, message])
-  }
-  if (typeof message === 'string') {
-    return concatUint8Arrays([MESSAGE_STRING, Buffer.from(message)])
-  }
-  return concatUint8Arrays([MESSAGE_JSON, Buffer.from(JSON.stringify(message))])
 }
 
 export function isStringOrBuffer (input: any): input is IStringOrBuffer {
@@ -68,25 +41,4 @@ export function bufferEquals (a: Uint8Array, b: Uint8Array): boolean {
 
 export function bufferToString (buffer: Uint8Array, encoding: EEncoding = 'utf8'): string {
   return Buffer.from(buffer).toString(encoding)
-}
-
-export function bufferToAny (buffer: Uint8Array): IEncodable {
-  switch (buffer[0]) {
-    case MESSAGE_BINARY_UINT8[0]:
-      if (buffer instanceof Buffer) {
-        return new Uint8Array(buffer.buffer, buffer.byteOffset + 1, buffer.byteLength - 1)
-      }
-      return buffer.slice(1)
-    case MESSAGE_BINARY_BUFFER[0]:
-      if (buffer instanceof Buffer) {
-        return buffer.slice(1)
-      }
-      return Buffer.from(buffer.slice(1))
-    case MESSAGE_STRING[0]:
-      return bufferToString(buffer.slice(1))
-    case MESSAGE_JSON[0]:
-      return JSON.parse(bufferToString(buffer.slice(1)))
-    default:
-      throw Object.assign(new Error(`Couldnt deserialize from buffer: Unknown object type[${buffer[0]}].`), { code: 'deserialization-error', type: buffer[0] })
-  }
 }

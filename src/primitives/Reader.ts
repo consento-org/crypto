@@ -1,7 +1,7 @@
 import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, decryptKeyFromReceiveKey, verifyKeyFromSendOrReceiveKey } from './key'
-import { bufferToString, IEncodable, Inspectable, toBuffer } from '../util'
+import { bufferToString, Inspectable, toBuffer } from '../util'
 import { encryptMessage, decryptMessage } from './fn'
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
@@ -78,11 +78,11 @@ export class Reader extends Inspectable implements IReader {
     return `Reader(${stylize(prettyHash(this.verifyKey), 'string')})`
   }
 
-  encryptOnly (message: IEncodable): Uint8Array {
+  encryptOnly (message: any): Uint8Array {
     return encryptMessage(this.encryptKey, message)
   }
 
-  decrypt (encrypted: IEncryptedMessage): IEncodable {
+  decrypt (encrypted: IEncryptedMessage): any {
     return decryptMessage(
       this.verifier.verifyKey,
       this.encryptKey,

@@ -1,11 +1,10 @@
 import { IReader, IWriter, IEncryptedMessage, IHandshakeAcceptMessage } from '../../types'
-import { IEncodable } from '../../util/types'
 import { exists } from '../../util'
 import { initHandshake, acceptHandshake, HandshakeAccept, HandshakeInit, HandshakeConfirmation } from '..'
 
 const channels: { [key: string]: (msg: IEncryptedMessage) => void } = {}
 
-function listenTo (receiver: IReader, handler: (msg: IEncodable, unlisten?: () => void) => any): () => void {
+function listenTo (receiver: IReader, handler: (msg: any, unlisten?: () => void) => any): () => void {
   const unlisten = (): any => {
     // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete channels[receiver.verifier.verifyKeyHex]
@@ -17,7 +16,7 @@ function listenTo (receiver: IReader, handler: (msg: IEncodable, unlisten?: () =
   channels[receiver.verifier.verifyKeyHex] = handlerRaw
   return unlisten
 }
-function listenOnce (receiver: IReader, handler: (msg: IEncodable) => any): () => void {
+function listenOnce (receiver: IReader, handler: (msg: any) => any): () => void {
   return listenTo(receiver, (msg, unlisten) => {
     if (exists(unlisten)) {
       unlisten()
@@ -25,7 +24,7 @@ function listenOnce (receiver: IReader, handler: (msg: IEncodable) => any): () =
     handler(msg)
   })
 }
-function sendTo (sender: IWriter, msg: IEncodable): void {
+function sendTo (sender: IWriter, msg: any): void {
   const { verifier: { verifyKeyHex: idHex } } = sender
   if (channels[idHex] === undefined) {
     throw new Error(`Unknown channel ${idHex}`)

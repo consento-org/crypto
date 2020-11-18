@@ -8,7 +8,6 @@ export type IPromiseCleanup = () => void | PromiseLike<void>
 export type TCheckPoint = <T extends Promise<any>> (input: T) => T
 
 export type IStringOrBuffer = Uint8Array | string
-export type IEncodable = IStringOrBuffer | object
 
 export type EEncoding = 'base64' | 'hex' | 'utf8'
 
