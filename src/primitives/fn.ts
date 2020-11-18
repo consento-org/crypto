@@ -1,17 +1,41 @@
-import { EDecryptionError, IEncryptedMessage } from '../types'
+import { EDecryptionError, IEncryptedMessage, IEncryptionKeys, ISignKeys } from '../types'
 import * as sodium from 'sodium-universal'
 import { bufferToAny, anyToBuffer } from '../util/buffer'
 import { IEncodable } from '../util/types'
 
 const {
+  crypto_box_PUBLICKEYBYTES: CRYPTO_BOX_PUBLICKEYBYTES,
+  crypto_box_SECRETKEYBYTES: CRYPTO_BOX_SECRETKEYBYTES,
   crypto_box_SEALBYTES: CRYPTO_BOX_SEALBYTES,
-  crypto_sign_BYTES: CRYPTO_SIGN_BYTES,
-  crypto_box_seal_open: boxSealOpen,
   crypto_box_seal: boxSeal,
-  crypto_sign_verify_detached: _verify,
+  crypto_box_seal_open: boxSealOpen,
+  crypto_box_keypair: boxKeyPair,
+  crypto_sign_BYTES: CRYPTO_SIGN_BYTES,
+  crypto_sign_PUBLICKEYBYTES: CRYPTO_SIGN_PUBLICKEYBYTES,
+  crypto_sign_SECRETKEYBYTES: CRYPTO_SIGN_SECRETKEYBYTES,
+  crypto_sign_keypair: signKeyPair,
   crypto_sign_detached: signDetached,
+  crypto_sign_verify_detached: _verify,
   sodium_malloc: malloc
 } = sodium.default
+
+export function createEncryptionKeys (): IEncryptionKeys {
+  const keys = {
+    encryptKey: malloc(CRYPTO_BOX_PUBLICKEYBYTES),
+    decryptKey: malloc(CRYPTO_BOX_SECRETKEYBYTES)
+  }
+  boxKeyPair(keys.encryptKey, keys.decryptKey)
+  return keys
+}
+
+export function createSignKeys (): ISignKeys {
+  const keys = {
+    verifyKey: malloc(CRYPTO_SIGN_PUBLICKEYBYTES),
+    signKey: malloc(CRYPTO_SIGN_SECRETKEYBYTES)
+  }
+  signKeyPair(keys.verifyKey, keys.signKey)
+  return keys
+}
 
 export function encryptMessage (writeKey: Uint8Array, message: IEncodable): Uint8Array {
   const msgBuffer = anyToBuffer(message)

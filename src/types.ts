@@ -6,6 +6,16 @@ export interface IEncryptedMessage {
   body: Uint8Array
 }
 
+export interface IEncryptionKeys {
+  encryptKey: Uint8Array
+  decryptKey: Uint8Array
+}
+
+export interface ISignKeys {
+  signKey: Uint8Array
+  verifyKey: Uint8Array
+}
+
 export enum EDecryptionError {
   invalidEncryption = 'invalid-encryption',
   invalidSignature = 'invalid-signature'
