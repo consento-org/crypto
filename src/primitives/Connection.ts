@@ -1,4 +1,4 @@
-import { IConnection, IReader, IWriter, IConnectionJSON, IConnectionOptions } from '../types'
+import { IConnection, IReader, IWriter, IConnectionJSON, IConnectionOptions, IConnectionOptionsByKey, IConnectionOptionsByIO } from '../types'
 import { Reader } from './Reader'
 import { Writer } from './Writer'
 import { bufferEquals, bufferToString, isStringOrBuffer, toBuffer } from '../util/buffer'
@@ -7,25 +7,52 @@ import { inReaderKeyFromConnectionKey, outWriterKeyFromConnectionKey } from './k
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
 
+function isConnectionOptionsByKey (input: IConnectionOptions): input is IConnectionOptionsByKey {
+  return 'connectionKey' in input
+}
+
+function isConnectionOptionsByIO (input: IConnectionOptions): input is IConnectionOptionsByIO {
+  return 'input' in input && 'output' in input
+}
+
 export class Connection extends Inspectable implements IConnection {
-  _input?: IReader
-  _output?: IWriter
-  _connectionKey?: Uint8Array
+  input: IReader
+  output: IWriter
+  _connectionKey: Uint8Array
   _connectionKeyBase64?: string
 
   constructor (opts: IConnectionOptions) {
     super()
-    if ('connectionKey' in opts) {
+    let readerKey: Uint8Array
+    let writerKey: Uint8Array
+    let inVector = opts.inVector
+    let outVector = opts.outVector
+    if (isConnectionOptionsByKey(opts)) {
       if (typeof opts.connectionKey === 'string') {
         this._connectionKeyBase64 = opts.connectionKey
-      } else {
-        this._connectionKey = opts.connectionKey
       }
+      this._connectionKey = toBuffer(opts.connectionKey)
+      readerKey = inReaderKeyFromConnectionKey(this._connectionKey)
+      writerKey = outWriterKeyFromConnectionKey(this._connectionKey)
+    } else if (isConnectionOptionsByIO(opts)) {
+      if (isStringOrBuffer(opts.input)) {
+        readerKey = toBuffer(opts.input)
+      } else {
+        readerKey = toBuffer(opts.input.readerKey)
+        inVector = inVector ?? opts.input.inVector
+      }
+      if (isStringOrBuffer(opts.output)) {
+        writerKey = toBuffer(opts.output)
+      } else {
+        writerKey = toBuffer(opts.output.writerKey)
+        outVector = outVector ?? opts.output.outVector
+      }
+      this._connectionKey = Buffer.concat([readerKey, writerKey])
     } else {
-      this._input = isStringOrBuffer(opts.input) ? new Reader({ readerKey: opts.input }) : 'readerKey' in opts.input ? new Reader(opts.input) : opts.input
-      this._output = isStringOrBuffer(opts.output) ? new Writer({ writerKey: opts.output }) : 'writerKey' in opts.output ? new Writer(opts.output) : opts.output
-      this._connectionKey = Buffer.concat([this._input.readerKey, this._output.writerKey])
+      throw new Error('Options for connection invalid, either connectionKey or input/output must be given.')
     }
+    this.input = new Reader({ readerKey, inVector })
+    this.output = new Writer({ writerKey, outVector })
     if (bufferEquals(this.input.verifyKey, this.output.verifyKey)) {
       throw new Error('Can not create a connection with both the writer and the reader have the same id! Did you mean to restore a channel?')
     }
@@ -45,28 +72,25 @@ export class Connection extends Inspectable implements IConnection {
     return this._connectionKeyBase64
   }
 
-  get input (): IReader {
-    if (this._input === undefined) {
-      this._input = new Reader({ readerKey: inReaderKeyFromConnectionKey(this.connectionKey) })
-    }
-    return this._input
-  }
-
-  get output (): IWriter {
-    if (this._output === undefined) {
-      this._output = new Writer({ writerKey: outWriterKeyFromConnectionKey(this.connectionKey) })
-    }
-    return this._output
-  }
-
   toJSON (): IConnectionJSON {
     return {
-      connectionKey: this.connectionKeyBase64
+      connectionKey: this.connectionKeyBase64,
+      inVector: this.input.inVector?.toJSON(),
+      outVector: this.output.outVector?.toJSON()
     }
   }
 
   _inspect (_: number, { stylize }: InspectOptions): string {
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `Connection(input=${stylize(prettyHash(this.input.verifyKey), 'string')}, output=${stylize(prettyHash(this.output.verifyKey), 'string')})`
+    let input: string = `input=${stylize(prettyHash(this.input.verifyKey), 'string')}`
+    if (this.input.inVector !== undefined) {
+      input += `#${this.input.inVector.index}`
+    }
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    let output: string = `output=${stylize(prettyHash(this.output.verifyKey), 'string')}`
+    if (this.output.outVector !== undefined) {
+      output += `#${this.output.outVector.index}`
+    }
+    return `Connection(${input}, ${output})`
   }
 }

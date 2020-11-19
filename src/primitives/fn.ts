@@ -1,6 +1,7 @@
-import { EDecryptionError, IEncryptedMessage, IEncryptionKeys, ISignKeys } from '../types'
+import { EDecryptionError, IEncryptedMessage, IEncryptionKeys, ISignKeys, ISignVector } from '../types'
 import * as sodium from 'sodium-universal'
 import { encode, decode } from '@msgpack/msgpack'
+import { SignVector } from './SignVector'
 
 const {
   crypto_box_PUBLICKEYBYTES: CRYPTO_BOX_PUBLICKEYBYTES,
@@ -73,4 +74,12 @@ export function sign (signKey: Uint8Array, body: Uint8Array): Uint8Array {
   const signature = malloc(CRYPTO_SIGN_BYTES)
   signDetached(signature, body, signKey)
   return signature
+}
+
+export function createSignVectors (): { inVector: ISignVector, outVector: ISignVector } {
+  const keys = createSignKeys()
+  return {
+    inVector: new SignVector({ next: keys.verifyKey }),
+    outVector: new SignVector({ next: keys.signKey })
+  }
 }

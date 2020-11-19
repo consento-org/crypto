@@ -1,7 +1,10 @@
 import { bufferToString, bufferCompare } from '../../util/buffer'
 import { Buffer } from '../../util/types'
-import { createChannel, Verifier, Reader, Writer, Channel } from '..'
+import { createChannel, Verifier, Reader, Writer, Channel, createSignVectors } from '..'
 import prettyHash from 'pretty-hash'
+import { decode, encode } from '@msgpack/msgpack'
+import { SignVector } from '../SignVector'
+import { Connection } from '../Connection'
 
 describe('Permission and encryption for channels', () => {
   it('a channel is serializable', () => {
@@ -167,5 +170,112 @@ describe('Permission and encryption for channels', () => {
   it('encrypt without signing', () => {
     const { writer: sender, reader: receiver } = createChannel()
     expect(receiver.decrypt(sender.encryptOnly('hello world'))).toEqual('hello world')
+  })
+})
+
+describe('Signing vectors', () => {
+  it('simply sign and verify a few messages', () => {
+    const { inVector, outVector } = createSignVectors()
+    const message = encode('hello world ')
+    const sigA = outVector.sign(message)
+    const sigB = outVector.sign(message)
+    inVector.verify(message, sigA)
+    inVector.verify(message, sigB)
+    expect(sigA).not.toEqual(sigB)
+  })
+  it('sign and verify in the wrong order', () => {
+    const { inVector, outVector } = createSignVectors()
+    const message = encode('hello world ')
+    outVector.sign(message)
+    const sigB = outVector.sign(message)
+    expect(() => {
+      inVector.verify(message, sigB)
+    }).toThrowError(new Error('Unexpected next index (expected=0, found=1)'))
+  })
+  it('sign and verify trying to trick the order', () => {
+    const { inVector, outVector } = createSignVectors()
+    const message = encode('hello world ')
+    const sigA = outVector.sign(message)
+    const sigB = outVector.sign(message)
+    const fakeSigB = encode({
+      ...(decode(sigB) as any),
+      index: 0
+    })
+    expect(() => {
+      inVector.verify(message, fakeSigB)
+    }).toThrowError(new Error('Message could not be verified to be part of vector (index=0)'))
+    inVector.verify(message, sigA)
+    inVector.verify(message, sigB)
+  })
+  it('de-/serialization of sign vectors', () => {
+    const { inVector, outVector } = createSignVectors()
+    const message = encode('hello world ')
+    const sigA = outVector.sign(message)
+    inVector.verify(message, sigA)
+    const resInVector = new SignVector(inVector.toJSON())
+    const resOutVector = new SignVector(outVector.toJSON())
+    const sigB = outVector.sign(message)
+    const resSigB = resOutVector.sign(message)
+    resInVector.verify(message, sigB)
+    inVector.verify(message, resSigB)
+    expect(sigB).not.toEqual(resSigB)
+    expect(resInVector.next).not.toEqual(inVector.next)
+  })
+  it('use with writer/reader', () => {
+    const { inVector, outVector } = createSignVectors()
+    const { writer, reader } = createChannel()
+    writer.outVector = outVector
+    reader.inVector = inVector
+    const encryptedA = writer.encryptNext('hello')
+    const encryptedB = writer.encryptNext('world')
+    expect(reader.decryptNext(encryptedA)).toBe('hello')
+    expect(reader.decryptNext(encryptedB)).toBe('world')
+  })
+  it('wrong order with writer/reader', () => {
+    const { inVector, outVector } = createSignVectors()
+    const { writer, reader } = createChannel()
+    writer.outVector = outVector
+    reader.inVector = inVector
+    writer.encryptNext('hello')
+    const encryptedB = writer.encryptNext('world')
+    expect(() => {
+      reader.decryptNext(encryptedB)
+    }).toThrow(new Error('Unexpected next index (expected=0, found=1)'))
+  })
+  it('use with writer/reader serialization', () => {
+    const { inVector, outVector } = createSignVectors()
+    const { writer, reader } = createChannel()
+    writer.outVector = outVector
+    const resWriter = new Writer(writer.toJSON())
+    expect(resWriter.outVector).toBeDefined()
+    expect(resWriter.outVector?.toJSON()).toEqual(writer.outVector?.toJSON())
+    reader.inVector = inVector
+    const resReader = new Reader(reader.toJSON())
+    expect(resReader.inVector).toBeDefined()
+    expect(resReader.inVector?.toJSON()).toEqual(reader.inVector?.toJSON())
+  })
+  it('use with channel serialization', () => {
+    const { inVector, outVector } = createSignVectors()
+    const channel = createChannel()
+    channel.writer.outVector = outVector
+    channel.reader.inVector = inVector
+    const resChannel = new Channel(channel.toJSON())
+    expect(resChannel.writer.outVector).toBeDefined()
+    expect(resChannel.writer.outVector?.toJSON()).toEqual(channel.writer.outVector?.toJSON())
+    expect(resChannel.reader.inVector).toBeDefined()
+    expect(resChannel.reader.inVector?.toJSON()).toEqual(channel.reader.inVector?.toJSON())
+  })
+  it('use with connection serialization', () => {
+    const { inVector, outVector } = createSignVectors()
+    const { writer: output } = createChannel()
+    const { reader: input } = createChannel()
+    const conn = new Connection({ input, output })
+    conn.output.outVector = outVector
+    conn.input.inVector = inVector
+    const resConn = new Connection(conn.toJSON())
+    expect(resConn.output.outVector).toBeDefined()
+    expect(resConn.output.outVector?.toJSON()).toEqual(conn.output.outVector?.toJSON())
+    expect(resConn.input.inVector).toBeDefined()
+    expect(resConn.input.inVector?.toJSON()).toEqual(conn.input.inVector?.toJSON())
   })
 })

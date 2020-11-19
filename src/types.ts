@@ -18,7 +18,15 @@ export interface ISignKeys {
 
 export enum EDecryptionError {
   invalidEncryption = 'invalid-encryption',
-  invalidSignature = 'invalid-signature'
+  invalidSignature = 'invalid-signature',
+  invalidMessage = 'invalid-message',
+  missingBody = 'missing-body',
+  missingSignature = 'missing-signature',
+  unexpectedIndex = 'unexpected-index',
+  vectorIntegrity = 'vector-integrity',
+  vectorPayload = 'vector-payload',
+  vectorIndex = 'vector-index',
+  vectorNext = 'vector-next'
 }
 
 export interface IVerifierJSON {
@@ -43,10 +51,12 @@ export interface IVerifier extends IChannelActor {
 
 export interface IWriterJSON {
   writerKey: string
+  outVector?: ISignVectorJSON
 }
 
 export interface IWriterOptions {
   writerKey: IStringOrBuffer
+  outVector?: ISignVectorOptions
 }
 
 export interface IWriter extends IChannelActor {
@@ -56,23 +66,29 @@ export interface IWriter extends IChannelActor {
   readonly encryptKey: Uint8Array
   readonly signKey: Uint8Array
   readonly verifier: IVerifier
+  outVector?: ISignVector
   sign(data: Uint8Array): Uint8Array
   encrypt(message: any): IEncryptedMessage
   encryptOnly(message: any): Uint8Array
+  encryptNext(message: any): IEncryptedMessage
+  encryptOnlyNext(message: any): Uint8Array
 }
 
 export interface IReaderJSON {
   readerKey: string
+  inVector?: ISignVectorJSON
 }
 
 export interface IReaderOptions {
   readerKey: IStringOrBuffer
+  inVector?: ISignVectorOptions
 }
 
 export interface IReader extends IChannelActor {
   readonly readerKey: Uint8Array
   readonly readerKeyBase64: string
   readonly verifier: IVerifier
+  inVector?: ISignVector
   toJSON(): IReaderJSON
   /**
    * Decrypts a message written by an associated Sender
@@ -80,26 +96,60 @@ export interface IReader extends IChannelActor {
    * @param encrypted signed or unsigned message
    */
   decrypt(encrypted: IEncryptedMessage | Uint8Array): any
+  decryptNext(encrypted: IEncryptedMessage | Uint8Array): any
   encryptOnly(message: any): Uint8Array
+}
+
+export interface ISignVector {
+  next: Uint8Array
+  nextBase64: string
+  index: number
+  increment (next: Uint8Array): Uint8Array
+  sign (message: Uint8Array): Uint8Array
+  verify (message: Uint8Array, signature: Uint8Array): void
+  toJSON (): ISignVectorJSON
+}
+
+export interface ISignVectorOptions {
+  next: IStringOrBuffer
+  index?: number
+}
+
+export interface ISignVectorJSON {
+  next: string
+  index: number
 }
 
 export interface IConnectionJSON {
   connectionKey: string
+  inVector?: ISignVectorJSON
+  outVector?: ISignVectorJSON
 }
 
-export type IConnectionOptions = {
+export interface IConnectionOptionsByKey {
   connectionKey: IStringOrBuffer
-} | {
+}
+
+export interface IConnectionOptionsByIO {
   input: IStringOrBuffer | IReader | IReaderOptions
   output: IStringOrBuffer | IWriter | IWriterOptions
 }
 
+export type IConnectionOptions = (IConnectionOptionsByKey | IConnectionOptionsByIO) & {
+  inVector?: ISignVectorOptions
+  outVector?: ISignVectorOptions
+}
+
 export interface IChannelJSON {
   channelKey: string
+  inVector?: ISignVectorJSON
+  outVector?: ISignVectorJSON
 }
 
 export interface IChannelOptions {
   channelKey: IStringOrBuffer
+  inVector?: ISignVectorOptions
+  outVector?: ISignVectorOptions
 }
 
 export interface IChannel extends IChannelActor {

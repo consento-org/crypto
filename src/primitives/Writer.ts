@@ -1,10 +1,12 @@
-import { IVerifier, IWriter, IWriterJSON, IEncryptedMessage, IWriterOptions } from '../types'
+import { IVerifier, IWriter, IWriterJSON, IEncryptedMessage, IWriterOptions, ISignVector } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, signKeyFromSendKey, verifyKeyFromSendOrReceiveKey } from './key'
-import { bufferToString, toBuffer, Inspectable } from '../util'
+import { bufferToString, toBuffer, Inspectable, exists } from '../util'
 import { encryptMessage, sign } from './fn'
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
+import { SignVector } from './SignVector'
+import { encode } from '@msgpack/msgpack'
 
 export class Writer extends Inspectable implements IWriter {
   _writerKey?: Uint8Array
@@ -12,13 +14,17 @@ export class Writer extends Inspectable implements IWriter {
   _annonymous?: IVerifier
   _signKey?: Uint8Array
   _encryptKey?: Uint8Array
+  outVector?: ISignVector
 
-  constructor ({ writerKey }: IWriterOptions) {
+  constructor ({ writerKey, outVector }: IWriterOptions) {
     super()
     if (typeof writerKey === 'string') {
       this._writerKeyBase64 = writerKey
     } else {
       this._writerKey = writerKey
+    }
+    if (exists(outVector)) {
+      this.outVector = new SignVector(outVector)
     }
   }
 
@@ -70,12 +76,16 @@ export class Writer extends Inspectable implements IWriter {
   }
 
   toJSON (): IWriterJSON {
-    return { writerKey: this.writerKeyBase64 }
+    return {
+      writerKey: this.writerKeyBase64,
+      outVector: this.outVector?.toJSON()
+    }
   }
 
   _inspect (_: number, { stylize }: InspectOptions): string {
+    const vector = this.outVector !== undefined ? `#${this.outVector.index}` : ''
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `Writer(${stylize(prettyHash(this.verifyKey), 'string')})`
+    return `Writer(${stylize(prettyHash(this.verifyKey), 'string')}${vector})`
   }
 
   sign (data: Uint8Array): Uint8Array {
@@ -92,5 +102,24 @@ export class Writer extends Inspectable implements IWriter {
       signature: sign(this.signKey, body),
       body
     }
+  }
+
+  encryptNext (message: any): IEncryptedMessage {
+    const body = this.encryptOnlyNext(message)
+    return {
+      signature: this.sign(body),
+      body
+    }
+  }
+
+  encryptOnlyNext (message: any): Uint8Array {
+    if (this.outVector === undefined) {
+      return this.encryptOnly(message)
+    }
+    const body = encode(message)
+    return this.encryptOnly(encode([
+      body,
+      this.outVector.sign(body)
+    ]))
   }
 }

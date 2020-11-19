@@ -21,18 +21,21 @@ export function createChannel (): Channel {
 }
 
 export class Channel extends Inspectable implements IChannel {
-  _reader?: IReader
-  _writer?: IWriter
-  _channelKey?: Uint8Array
+  reader: IReader
+  writer: IWriter
+  channelKey: Uint8Array
   _channelKeyBase64?: string
 
-  constructor ({ channelKey }: IChannelOptions) {
+  constructor ({ channelKey, inVector, outVector }: IChannelOptions) {
     super()
     if (typeof channelKey === 'string') {
       this._channelKeyBase64 = channelKey
+      this.channelKey = toBuffer(channelKey)
     } else {
-      this._channelKey = channelKey
+      this.channelKey = channelKey
     }
+    this.reader = new Reader({ readerKey: readerKeyFromChannelKey(this.channelKey), inVector })
+    this.writer = new Writer({ writerKey: writerKeyFromChannelKey(this.channelKey), outVector })
   }
 
   get verifyKey (): Uint8Array {
@@ -47,32 +50,11 @@ export class Channel extends Inspectable implements IChannel {
     return this.reader.verifyKeyHex
   }
 
-  get channelKey (): Uint8Array {
-    if (this._channelKey === undefined) {
-      this._channelKey = toBuffer(this._channelKeyBase64 as unknown as string)
-    }
-    return this._channelKey
-  }
-
   get channelKeyBase64 (): string {
     if (this._channelKeyBase64 === undefined) {
-      this._channelKeyBase64 = bufferToString(this._channelKey as unknown as Uint8Array, 'base64')
+      this._channelKeyBase64 = bufferToString(this.channelKey as unknown as Uint8Array, 'base64')
     }
     return this._channelKeyBase64
-  }
-
-  get reader (): IReader {
-    if (this._reader === undefined) {
-      this._reader = new Reader({ readerKey: readerKeyFromChannelKey(this.channelKey) })
-    }
-    return this._reader
-  }
-
-  get writer (): IWriter {
-    if (this._writer === undefined) {
-      this._writer = new Writer({ writerKey: writerKeyFromChannelKey(this.channelKey) })
-    }
-    return this._writer
   }
 
   get verifier (): IVerifier {
@@ -86,7 +68,9 @@ export class Channel extends Inspectable implements IChannel {
 
   toJSON (): IChannelJSON {
     return {
-      channelKey: this.channelKeyBase64
+      channelKey: this.channelKeyBase64,
+      inVector: this.reader.inVector?.toJSON(),
+      outVector: this.writer.outVector?.toJSON()
     }
   }
 }

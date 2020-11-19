@@ -22,6 +22,8 @@ for all data types.
 - `Connection` - an e2e encrypted setup consisting of the `Reader` of one channel, called `input` and the `Writer` of another, called `output`.
 - `Blob` - a self-contained piece of data, like an image or pdf.
 - `Handshake` - the process to connect two separate processes/devices resulting in a `Connection` for each process.
+- `SignVector` - operations on a `Channel` **may** be `vectored` with means that there is a new sign/verify keypair for every new message.
+    The `SignVector` holds the `index` and current `sign` or `verify` key.
 
 ## Sending/Receiving encrypted messages
 
@@ -54,6 +56,30 @@ reader.decryptKey // Allows the reader to decrypt messages, only privy to the re
 writer.encryptKey.equals(receiver.encryptKey) // Key to encrypt messages, receiver _can_ write but not sign the message, thus it exists pro-forma
 ```
 
+To make sure that the order of the encrypted messages is maintained you can use `SignVector`s that will rotate the signing
+key for each message.
+
+
+```javascript
+const { createSignVectors } = require('@consento/crypto')
+const { inVector, outVector } = createSignVectors()
+
+const message = Buffer.from('hello world')
+const sigA = outVector.sign(message)
+const sigB = outVector.sign(message) // Both signatures are different!j
+
+inVector.verify(message, sigA)
+inVector.verify(message, sigB) // The signatures need to be verified in order, else an exception will be thrown
+
+// Using the in-/outVector in combination with readers and writers will affect the `encryptNext`, `decryptNext` operation
+const { reader, writer } = createChannel()
+reader.inVector = inVector
+writer.outVector = outVector
+
+const encrypted = writer.encryptNext('hello world') // With the inVector and outVector set, the order is maintained
+const message = reader.decryptNext(encrypted) // This would thrown an error if the signature can't be verified
+```
+
 All objects created using `createChannel` are well de-/serializable:
 
 ```javascript
@@ -80,7 +106,7 @@ reader.verifier.verify(...)
 
 #### writer.encrypt(body)
 
-Encrypt and sign a given input with the sender key.
+Encrypt and sign a given input with the `encryptKey` and `signKey`.
 
 - `body` - what you like to encrypt, any serializable object is possible
 
@@ -99,6 +125,55 @@ signature needs to be created at a different time!
 
 ```javascript
 const encrypted = writer.encrypt('secret message')
+encrypted // Uint8Array with an encrypted message
+```
+
+#### signVector.sign(message)
+
+- `message` - an `Uint8Array` that should be signed.
+
+```javascript
+const { outVector } = createSignVectors()
+inVector.verify('hello world')
+```
+
+#### signVector.verify(message, signature)
+
+- `message` - an `Uint8Array` with the message for the signature 
+- `signature` - an `Uint8Array` that contains the signature
+
+```javascript
+const { inVector } = createSignVectors()
+inVector.verify(message, signature)
+```
+
+#### writer.outVector, reader.inVector
+
+An optional property which enables vectored encryption in `writer.encryptNext` and
+`writer.encryptNextOnly` and `reader.decryptNext` respectively.
+
+#### writer.encryptNext(body)
+
+If an `.outVector` is present, this method will add a signature from the `outVector` to
+the data before encrypting and signing the data, else behaves same as `writer.encrypt`.
+
+- `body` - what you like to encrypt, any serializable object is possible
+
+```javascript
+const encrypted = writer.encryptNext('secret message')
+encrypted.signature // Uint8Array
+encrypted.body // Uint8Array
+```
+
+#### writer.encryptNextOnly(body)
+
+If an `.outVector` is present, this method will add a signature from the `outVector` to
+the data before encrypting the data, else it behaves same as `writer.encryptOnly`.
+
+- `body` - what you like to encrypt, any serializable object is possible
+
+```javascript
+const encrypted = writer.encryptNextOnly('secret message')
 encrypted // Uint8Array with an encrypted message
 ```
 
@@ -145,6 +220,13 @@ Get the content of a once encrypted message.
 ```javascript
 const message = reader.decrypt(message:)
 ```
+
+#### reader.decryptNext(encrypted)
+
+If an `.inVector` is present, this method will verify the signature using the `inVector` to
+the data after decrypting the data, else it behaves same as `writer.decrypt`.
+
+- `encrypted` - `{ signature: Uint8Array, body: Uint8Array }` as created by `writer.encryptNext` or `Uint8Array` created with `writer.encryptNextOnly`
 
 ## Creating a handshake
 
