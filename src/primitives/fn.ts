@@ -1,6 +1,8 @@
 import { EDecryptionError, IEncryptedMessage, IEncryptionKeys, ISignKeys, ISignVector } from '../types'
 import * as sodium from 'sodium-universal'
 import { encode, decode } from '@msgpack/msgpack'
+import { Channel } from './Channel'
+import { Buffer } from 'buffer'
 import { SignVector } from './SignVector'
 
 const {
@@ -82,4 +84,10 @@ export function createSignVectors (): { inVector: ISignVector, outVector: ISignV
     inVector: new SignVector({ next: keys.verifyKey }),
     outVector: new SignVector({ next: keys.signKey })
   }
+}
+
+export function createChannel (): Channel {
+  const encrypt = createEncryptionKeys()
+  const sign = createSignKeys()
+  return new Channel({ channelKey: Buffer.concat([encrypt.encryptKey, sign.verifyKey, encrypt.decryptKey, sign.signKey]) })
 }

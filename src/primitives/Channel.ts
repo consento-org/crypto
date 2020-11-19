@@ -6,19 +6,12 @@ import {
   IChannelJSON,
   IChannelOptions
 } from '../types'
-import { Buffer, bufferToString, toBuffer, Inspectable } from '../util'
+import { bufferToString, toBuffer, Inspectable } from '../util'
 import { Reader } from './Reader'
 import { Writer } from './Writer'
 import { readerKeyFromChannelKey, writerKeyFromChannelKey } from './key'
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
-import { createEncryptionKeys, createSignKeys } from './fn'
-
-export function createChannel (): Channel {
-  const encrypt = createEncryptionKeys()
-  const sign = createSignKeys()
-  return new Channel({ channelKey: Buffer.concat([encrypt.encryptKey, sign.verifyKey, encrypt.decryptKey, sign.signKey]) })
-}
 
 export class Channel extends Inspectable implements IChannel {
   reader: IReader
