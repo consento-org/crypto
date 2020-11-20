@@ -24,6 +24,8 @@ for all data types.
 - `Handshake` - the process to connect two separate processes/devices resulting in a `Connection` for each process.
 - `SignVector` - operations on a `Channel` **may** be `vectored` with means that there is a new sign/verify keypair for every new message.
     The `SignVector` holds the `index` and current `sign` or `verify` key.
+- `Codec` - Data written by a reader or read by a writer will be transported binary (`Uint8Array`), a `Codec` specifies how an object read
+    or written will be translated from/to binary data.
 
 ## Sending/Receiving encrypted messages
 
@@ -91,6 +93,21 @@ new Channel(channel.toJSON())
 new Reader(reader.toJSON())
 new Writer(writer.toJSON())
 new Verifier(verifier.toJSON())
+```
+
+## Codecs
+
+Any data sent out through `Writer`s or `Reader`s is encoded using mechanism, by default it will be using `msgpack`
+but you can specify any codec supported by [`@consento/codecs`](https://github.com/consento-org/codecs).
+
+```js
+const { createChannel } = require('@consento/crypto')
+
+const { writer } = createChannel({ codec: 'json' }) // 
+writer.encrypt({ foo: 'hello' }) // Changes the binary format to be utf-8 encoded JSON data.
+
+const differentCodec = new Writer({ ...writer.toJSON(), codec: 'msgpack' })
+writer.encrypt({ foo: 'hello' }) // Looks same but the binary data is now encoded using msgpack
 ```
 
 ### .verifier

@@ -7,16 +7,18 @@ import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
 import { SignVector } from './SignVector'
 import { encode } from '@msgpack/msgpack'
+import codecs, { Codec, CodecOption } from '@consento/codecs'
 
-export class Writer extends Inspectable implements IWriter {
+export class Writer <TCodec extends CodecOption = undefined> extends Inspectable implements IWriter<Codec<TCodec, 'msgpack'>> {
   _writerKey?: Uint8Array
   _writerKeyBase64?: string
   _annonymous?: IVerifier
   _signKey?: Uint8Array
   _encryptKey?: Uint8Array
   outVector?: ISignVector
+  codec: Codec<TCodec, 'msgpack'>
 
-  constructor ({ writerKey, outVector }: IWriterOptions) {
+  constructor ({ writerKey, outVector, codec }: IWriterOptions<TCodec>) {
     super()
     if (typeof writerKey === 'string') {
       this._writerKeyBase64 = writerKey
@@ -26,6 +28,11 @@ export class Writer extends Inspectable implements IWriter {
     if (exists(outVector)) {
       this.outVector = new SignVector(outVector)
     }
+    this.codec = codecs(codec, 'msgpack')
+  }
+
+  recodec <TCodec extends CodecOption = undefined> (codec: TCodec): IWriter<Codec<TCodec, 'msgpack'>> {
+    return new Writer({ writerKey: this.writerKey, outVector: this.outVector, codec })
   }
 
   get signKey (): Uint8Array {
@@ -75,17 +82,18 @@ export class Writer extends Inspectable implements IWriter {
     return this._annonymous
   }
 
-  toJSON (): IWriterJSON {
+  toJSON (): IWriterJSON<Codec<TCodec, 'msgpack'>> {
     return {
       writerKey: this.writerKeyBase64,
-      outVector: this.outVector?.toJSON()
+      outVector: this.outVector?.toJSON(),
+      codec: this.codec.name
     }
   }
 
   _inspect (_: number, { stylize }: InspectOptions): string {
     const vector = this.outVector !== undefined ? `#${this.outVector.index}` : ''
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `Writer(${stylize(prettyHash(this.verifyKey), 'string')}${vector})`
+    return `Writer(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.verifyKey), 'string')}${vector})`
   }
 
   sign (data: Uint8Array): Uint8Array {

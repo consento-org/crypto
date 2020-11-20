@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
+import codecs, { Codec, CodecOption, INamedCodec } from '@consento/codecs'
 import { IStringOrBuffer } from './util/types'
 
 export interface IEncryptedMessage {
@@ -49,23 +50,28 @@ export interface IVerifier extends IChannelActor {
   verifyMessage(message: IEncryptedMessage): boolean
 }
 
-export interface IWriterJSON {
+type PropType<TObj, TProp extends keyof TObj> = TObj[TProp]
+
+export interface IWriterJSON <TCodec extends INamedCodec> {
   writerKey: string
   outVector?: ISignVectorJSON
+  codec: PropType<TCodec, 'name'>
 }
 
-export interface IWriterOptions {
+export interface IWriterOptions <TCodec extends CodecOption> {
   writerKey: IStringOrBuffer
   outVector?: ISignVectorOptions
+  codec?: TCodec
 }
 
-export interface IWriter extends IChannelActor {
-  toJSON(): IWriterJSON
+export interface IWriter <TCodec extends INamedCodec> extends IChannelActor {
+  toJSON(): IWriterJSON<TCodec>
   readonly writerKey: Uint8Array
   readonly writerKeyBase64: string
   readonly encryptKey: Uint8Array
   readonly signKey: Uint8Array
   readonly verifier: IVerifier
+  readonly codec: TCodec
   outVector?: ISignVector
   sign(data: Uint8Array): Uint8Array
   encrypt(message: any): IEncryptedMessage
@@ -74,22 +80,25 @@ export interface IWriter extends IChannelActor {
   encryptOnlyNext(message: any): Uint8Array
 }
 
-export interface IReaderJSON {
+export interface IReaderJSON <TCodec extends INamedCodec> {
   readerKey: string
   inVector?: ISignVectorJSON
+  codec: PropType<TCodec, 'name'>
 }
 
-export interface IReaderOptions {
+export interface IReaderOptions <TCodec extends CodecOption> {
   readerKey: IStringOrBuffer
   inVector?: ISignVectorOptions
+  codec?: TCodec
 }
 
-export interface IReader extends IChannelActor {
+export interface IReader <TCodec extends INamedCodec> extends IChannelActor {
   readonly readerKey: Uint8Array
   readonly readerKeyBase64: string
   readonly verifier: IVerifier
+  readonly codec: TCodec
   inVector?: ISignVector
-  toJSON(): IReaderJSON
+  toJSON(): IReaderJSON<TCodec>
   /**
    * Decrypts a message written by an associated Sender
    *
@@ -120,8 +129,10 @@ export interface ISignVectorJSON {
   index: number
 }
 
-export interface IConnectionJSON {
+export interface IConnectionJSON <TInputCodec extends INamedCodec, TOutputCodec extends INamedCodec> {
   connectionKey: string
+  inCodec: PropType<TInputCodec, 'name'>
+  outCodec: PropType<TOutputCodec, 'name'>
   inVector?: ISignVectorJSON
   outVector?: ISignVectorJSON
 }
@@ -130,55 +141,64 @@ export interface IConnectionOptionsByKey {
   connectionKey: IStringOrBuffer
 }
 
-export interface IConnectionOptionsByIO {
-  input: IStringOrBuffer | IReader | IReaderOptions
-  output: IStringOrBuffer | IWriter | IWriterOptions
+export interface IConnectionOptionsByIO <TInputCodec extends CodecOption = undefined, TOutputCodec extends CodecOption = undefined> {
+  input: IStringOrBuffer | IReader<Codec<TInputCodec>> | IReaderOptions<TInputCodec>
+  output: IStringOrBuffer | IWriter<Codec<TOutputCodec>> | IWriterOptions<TOutputCodec>
 }
 
-export type IConnectionOptions = (IConnectionOptionsByKey | IConnectionOptionsByIO) & {
+export type IConnectionOptions <TInputCodec extends CodecOption, TOutputCodec extends CodecOption> = (IConnectionOptionsByKey | IConnectionOptionsByIO<TInputCodec, TOutputCodec>) & {
+  inCodec?: TInputCodec
+  outCodec?: TOutputCodec
   inVector?: ISignVectorOptions
   outVector?: ISignVectorOptions
 }
 
-export interface IChannelJSON {
+export interface IChannelJSON<TCodec extends INamedCodec> {
   channelKey: string
+  codec: PropType<TCodec, 'name'>
   inVector?: ISignVectorJSON
   outVector?: ISignVectorJSON
 }
 
-export interface IChannelOptions {
+export interface IChannelOptions <TCodec extends CodecOption> {
   channelKey: IStringOrBuffer
+  codec?: TCodec
   inVector?: ISignVectorOptions
   outVector?: ISignVectorOptions
 }
 
-export interface IChannel extends IChannelActor {
+export interface IChannel <TCodec extends INamedCodec> extends IChannelActor {
   verifier: IVerifier
-  toJSON(): IChannelJSON
+  codec: TCodec
+  channelKey: Uint8Array
+  channelKeyBase64: string
+  reader: IReader<TCodec>
+  writer: IWriter<TCodec>
+  toJSON(): IChannelJSON<TCodec>
 }
 
-export interface IConnection {
-  output: IWriter
-  input: IReader
+export interface IConnection <TInput extends INamedCodec, TOutput extends INamedCodec> {
+  output: IWriter<TOutput>
+  input: IReader<TInput>
   connectionKey: Uint8Array
   connectionKeyBase64: string
-  toJSON(): IConnectionJSON
+  toJSON(): IConnectionJSON<TInput, TOutput>
 }
 
 export interface IHandshakeInitJSON {
-  input: IReaderJSON
+  input: Omit<IReaderJSON<any>, 'codec'>
   firstMessage: string
   handshakeSecret: string
 }
 
 export interface IHandshakeInitOptions {
-  input: IReader | IReaderOptions
+  input: Omit<IReaderOptions<any>, 'codec'>
   firstMessage: IStringOrBuffer
   handshakeSecret: IStringOrBuffer
 }
 
 export interface IHandshakeInit {
-  input: IReader
+  input: IReader<MsgPackCodec>
   firstMessage: Uint8Array
   handshakeSecret: Uint8Array
   toJSON(): IHandshakeInitJSON
@@ -190,32 +210,44 @@ export interface IHandshakeAcceptMessage {
   secret: string
 }
 
-export interface IHandshakeAcceptJSON extends IConnectionJSON {
+export interface IHandshakeAcceptJSON {
+  connectionKey: string
   acceptMessage: IHandshakeAcceptMessage
 }
 
-export type IHandshakeAcceptOptions = IConnectionOptions & {
+export type IHandshakeAcceptOptions = ({
+  connectionKey: IStringOrBuffer
+} | {
+  input: IStringOrBuffer
+  output: IStringOrBuffer
+}) & {
   acceptMessage: IHandshakeAcceptMessage
 }
 
-export interface IHandshakeAccept extends IConnection {
+export type MsgPackCodec = typeof codecs.msgpack
+
+export interface IHandshakeAccept {
+  connectionKey: Uint8Array
+  connectionKeyBase64: string
+  input: IReader<MsgPackCodec>
+  output: IWriter<MsgPackCodec>
   acceptMessage: IHandshakeAcceptMessage
   toJSON(): IHandshakeAcceptJSON
-  finalize(message: Uint8Array): IConnection
+  finalize(message: Uint8Array): IConnection<MsgPackCodec, MsgPackCodec>
 }
 
 export interface IHandshakeConfirmationOptions {
-  connection: IConnectionOptions
+  connectionKey: IStringOrBuffer
   finalMessage: IStringOrBuffer
 }
 
 export interface IHandshakeConfirmationJSON {
-  connection: IConnectionJSON
+  connectionKey: string
   finalMessage: string
 }
 
 export interface IHandshakeConfirmation {
-  connection: IConnection
+  connection: IConnection<MsgPackCodec, MsgPackCodec>
   finalMessage: Uint8Array
   toJSON(): IHandshakeConfirmationJSON
 }

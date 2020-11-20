@@ -1,8 +1,9 @@
 import { IEncryptedBlob, IEncryptedBlobJSON } from '../types'
 import { bufferToString } from '../util/buffer'
-import { Buffer, IEncodable } from '../util/types'
+import { Buffer } from '../util/types'
 import { encrypt, decrypt, createSecret } from '../util/secretbox'
 import * as sodium from 'sodium-universal'
+import codecs, { INamedCodec } from '@consento/codecs'
 
 const {
   crypto_kdf_CONTEXTBYTES: CRYPTO_KDF_CONTEXTBYTES,
@@ -86,16 +87,16 @@ export function toEncryptedBlob (input: string | Uint8Array | IEncryptedBlob | I
   return input
 }
 
-export function encryptBlob (encodable: IEncodable): { blob: IEncryptedBlob, encrypted: Uint8Array } {
+export function encryptBlob <TType = any> (encodable: TType, codec: INamedCodec<string, TType> = codecs.msgpack): { blob: IEncryptedBlob, encrypted: Uint8Array } {
   const secretKey = createSecret()
   const path = pathForSecretKey(secretKey)
-  const encrypted = encrypt(secretKey, encodable)
+  const encrypted = encrypt(secretKey, codec.encode(encodable))
   return {
     blob: newBlob(secretKey, path, encrypted.length),
     encrypted
   }
 }
 
-export function decryptBlob (secretKey: Uint8Array, encrypted: Uint8Array): IEncodable {
-  return decrypt(secretKey, encrypted)
+export function decryptBlob <TType = any> (secretKey: Uint8Array, encrypted: Uint8Array, codec: INamedCodec<string, TType> = codecs.msgpack): TType {
+  return codec.decode(decrypt(secretKey, encrypted))
 }

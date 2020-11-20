@@ -12,14 +12,15 @@ import { Writer } from './Writer'
 import { readerKeyFromChannelKey, writerKeyFromChannelKey } from './key'
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
+import { Codec, CodecOption } from '@consento/codecs'
 
-export class Channel extends Inspectable implements IChannel {
-  reader: IReader
-  writer: IWriter
+export class Channel <TCodec extends CodecOption = undefined> extends Inspectable implements IChannel<Codec<TCodec, 'msgpack'>> {
+  reader: IReader<Codec<TCodec, 'msgpack'>>
+  writer: IWriter<Codec<TCodec, 'msgpack'>>
   channelKey: Uint8Array
   _channelKeyBase64?: string
 
-  constructor ({ channelKey, inVector, outVector }: IChannelOptions) {
+  constructor ({ channelKey, inVector, outVector, codec }: IChannelOptions<TCodec>) {
     super()
     if (typeof channelKey === 'string') {
       this._channelKeyBase64 = channelKey
@@ -27,8 +28,21 @@ export class Channel extends Inspectable implements IChannel {
     } else {
       this.channelKey = channelKey
     }
-    this.reader = new Reader({ readerKey: readerKeyFromChannelKey(this.channelKey), inVector })
-    this.writer = new Writer({ writerKey: writerKeyFromChannelKey(this.channelKey), outVector })
+    this.reader = new Reader({ readerKey: readerKeyFromChannelKey(this.channelKey), inVector, codec })
+    this.writer = new Writer({ writerKey: writerKeyFromChannelKey(this.channelKey), outVector, codec })
+  }
+
+  recodec <TCodec extends CodecOption = undefined> (codec: TCodec): IChannel<Codec<TCodec, 'msgpack'>> {
+    return new Channel({
+      channelKey: this.channelKey,
+      inVector: this.reader.inVector,
+      outVector: this.writer.outVector,
+      codec
+    })
+  }
+
+  get codec (): Codec<TCodec, 'msgpack'> {
+    return this.reader.codec
   }
 
   get verifyKey (): Uint8Array {
@@ -56,14 +70,15 @@ export class Channel extends Inspectable implements IChannel {
 
   _inspect (_: number, { stylize }: InspectOptions): string {
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `Channel(${stylize(prettyHash(this.reader.verifyKey), 'string')})`
+    return `Channel(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.reader.verifyKey), 'string')})`
   }
 
-  toJSON (): IChannelJSON {
+  toJSON (): IChannelJSON<Codec<TCodec, 'msgpack'>> {
     return {
       channelKey: this.channelKeyBase64,
       inVector: this.reader.inVector?.toJSON(),
-      outVector: this.writer.outVector?.toJSON()
+      outVector: this.writer.outVector?.toJSON(),
+      codec: this.reader.codec.name
     }
   }
 }

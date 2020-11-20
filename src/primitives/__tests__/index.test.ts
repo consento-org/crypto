@@ -8,7 +8,7 @@ import { Connection } from '../Connection'
 
 describe('Permission and encryption for channels', () => {
   it('a channel is serializable', () => {
-    const channel = createChannel()
+    const channel = createChannel({ codec: 'json' })
     const json = channel.toJSON()
     if (!('channelKey' in json)) {
       throw new Error('Missing channelKey')
@@ -52,7 +52,7 @@ describe('Permission and encryption for channels', () => {
     if (!('writerKey' in json)) {
       throw new Error('Missing writerKey')
     }
-    expect(Object.keys(json)).toEqual(['writerKey'])
+    expect(Object.keys(json)).toEqual(['writerKey', 'outVector', 'codec'])
     expect(typeof json.writerKey).toBe('string')
     const recovered = new Writer(json)
     expect(bufferToString(recovered.writerKey)).toBe(bufferToString(original.writerKey))
@@ -71,7 +71,7 @@ describe('Permission and encryption for channels', () => {
   it('a receiver can be restored from its toJSON representation', () => {
     const { reader: original, writer: sender } = createChannel()
     const json = original.toJSON()
-    expect(Object.keys(json)).toEqual(['readerKey'])
+    expect(Object.keys(json)).toEqual(['readerKey', 'inVector', 'codec'])
     expect(typeof json.readerKey).toBe('string')
     const recovered = new Reader(json)
     expect(bufferToString(recovered.readerKey)).toBe(bufferToString(original.readerKey))
@@ -152,13 +152,13 @@ describe('Permission and encryption for channels', () => {
   it('sender as string', () => {
     const { writer: sender } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(sender.toString()).toBe(`Writer(${prettyHash(sender.verifyKey)})`)
+    expect(sender.toString()).toBe(`Writer(msgpack|${prettyHash(sender.verifyKey)})`)
   })
 
   it('receiver as string', () => {
     const { reader: receiver } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(receiver.toString()).toBe(`Reader(${prettyHash(receiver.verifyKey)})`)
+    expect(receiver.toString()).toBe(`Reader(msgpack|${prettyHash(receiver.verifyKey)})`)
   })
 
   it('verifier as string', () => {

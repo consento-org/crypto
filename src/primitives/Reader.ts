@@ -7,6 +7,7 @@ import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
 import { decode } from '@msgpack/msgpack'
 import { SignVector } from './SignVector'
+import codecs, { Codec, CodecOption } from '@consento/codecs'
 
 function assertVectoredMessage (input: any): asserts input is [ body: Uint8Array, signature: Uint8Array ] {
   if (!Array.isArray(input)) {
@@ -20,15 +21,16 @@ function assertVectoredMessage (input: any): asserts input is [ body: Uint8Array
   }
 }
 
-export class Reader extends Inspectable implements IReader {
+export class Reader <TCodec extends CodecOption = undefined> extends Inspectable implements IReader <Codec<TCodec, 'msgpack'>> {
   _receiveKey?: Uint8Array
   _receiveKeyBase64?: string
   _decryptKey?: Uint8Array
   _encryptKey?: Uint8Array
   _verifier?: IVerifier
   inVector?: ISignVector
+  codec: Codec<TCodec, 'msgpack'>
 
-  constructor ({ readerKey, inVector }: IReaderOptions) {
+  constructor ({ readerKey, inVector, codec }: IReaderOptions<TCodec>) {
     super()
     if (typeof readerKey === 'string') {
       this._receiveKeyBase64 = readerKey
@@ -38,6 +40,11 @@ export class Reader extends Inspectable implements IReader {
     if (exists(inVector)) {
       this.inVector = new SignVector(inVector)
     }
+    this.codec = codecs(codec, 'msgpack')
+  }
+
+  recodec <TCodec extends CodecOption = undefined> (codec: TCodec): IReader<Codec<TCodec, 'msgpack'>> {
+    return new Reader({ readerKey: this.readerKey, inVector: this.inVector, codec })
   }
 
   get verifyKey (): Uint8Array {
@@ -87,17 +94,18 @@ export class Reader extends Inspectable implements IReader {
     return this._receiveKeyBase64
   }
 
-  toJSON (): IReaderJSON {
+  toJSON (): IReaderJSON<Codec<TCodec, 'msgpack'>> {
     return {
       readerKey: this.readerKeyBase64,
-      inVector: this.inVector?.toJSON()
+      inVector: this.inVector?.toJSON(),
+      codec: this.codec.name
     }
   }
 
   _inspect (_: number, { stylize }: InspectOptions): string {
     const vector = this.inVector !== undefined ? `#${this.inVector.index}` : ''
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `Reader(${stylize(prettyHash(this.verifyKey), 'string')}${vector})`
+    return `Reader(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.verifyKey), 'string')}${vector})`
   }
 
   encryptOnly (message: any): Uint8Array {

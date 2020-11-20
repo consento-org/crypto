@@ -1,9 +1,10 @@
-import { EDecryptionError, IEncryptedMessage, IEncryptionKeys, ISignKeys, ISignVector } from '../types'
+import { EDecryptionError, IChannelOptions, IEncryptedMessage, IEncryptionKeys, ISignKeys, ISignVector } from '../types'
 import * as sodium from 'sodium-universal'
 import { encode, decode } from '@msgpack/msgpack'
 import { Channel } from './Channel'
 import { Buffer } from 'buffer'
 import { SignVector } from './SignVector'
+import { CodecOption } from '@consento/codecs'
 
 const {
   crypto_box_PUBLICKEYBYTES: CRYPTO_BOX_PUBLICKEYBYTES,
@@ -86,8 +87,11 @@ export function createSignVectors (): { inVector: ISignVector, outVector: ISignV
   }
 }
 
-export function createChannel (): Channel {
+export function createChannel <TCodec extends CodecOption = undefined> (opts?: Omit<IChannelOptions<TCodec>, 'channelKey'>): Channel<TCodec> {
   const encrypt = createEncryptionKeys()
   const sign = createSignKeys()
-  return new Channel({ channelKey: Buffer.concat([encrypt.encryptKey, sign.verifyKey, encrypt.decryptKey, sign.signKey]) })
+  return new Channel<TCodec>({
+    channelKey: Buffer.concat([encrypt.encryptKey, sign.verifyKey, encrypt.decryptKey, sign.signKey]),
+    ...opts
+  })
 }
