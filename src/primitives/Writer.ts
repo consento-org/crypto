@@ -7,7 +7,7 @@ import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
 import { SignVector } from './SignVector'
 import { encode } from '@msgpack/msgpack'
-import codecs, { Codec, CodecOption } from '@consento/codecs'
+import codecs, { Codec, CodecOption, InType } from '@consento/codecs'
 
 export class Writer <TCodec extends CodecOption = undefined> extends Inspectable implements IWriter<Codec<TCodec, 'msgpack'>> {
   _writerKey?: Uint8Array
@@ -93,26 +93,26 @@ export class Writer <TCodec extends CodecOption = undefined> extends Inspectable
   _inspect (_: number, { stylize }: InspectOptions): string {
     const vector = this.outVector !== undefined ? `#${this.outVector.index}` : ''
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `Writer(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.verifyKey), 'string')}${vector})`
+    return `Writer(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.verifyKeyHex), 'string')}${vector})`
   }
 
   sign (data: Uint8Array): Uint8Array {
     return sign(this.signKey, data)
   }
 
-  encryptOnly (message: any): Uint8Array {
-    return encryptMessage(this.encryptKey, message)
+  encryptOnly (message: InType<TCodec, 'msgpack'>): Uint8Array {
+    return encryptMessage(this.encryptKey, this.codec.encode(message))
   }
 
-  encrypt (message: any): IEncryptedMessage {
-    const body = encryptMessage(this.encryptKey, message)
+  encrypt (message: InType<TCodec, 'msgpack'>): IEncryptedMessage {
+    const body = encryptMessage(this.encryptKey, this.codec.encode(message))
     return {
       signature: sign(this.signKey, body),
       body
     }
   }
 
-  encryptNext (message: any): IEncryptedMessage {
+  encryptNext (message: InType<TCodec, 'msgpack'>): IEncryptedMessage {
     const body = this.encryptOnlyNext(message)
     return {
       signature: this.sign(body),
@@ -120,12 +120,12 @@ export class Writer <TCodec extends CodecOption = undefined> extends Inspectable
     }
   }
 
-  encryptOnlyNext (message: any): Uint8Array {
+  encryptOnlyNext (message: InType<TCodec, 'msgpack'>): Uint8Array {
     if (this.outVector === undefined) {
       return this.encryptOnly(message)
     }
-    const body = encode(message)
-    return this.encryptOnly(encode([
+    const body = this.codec.encode(message)
+    return encryptMessage(this.encryptKey, encode([
       body,
       this.outVector.sign(body)
     ]))

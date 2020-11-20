@@ -107,7 +107,7 @@ const { writer } = createChannel({ codec: 'json' }) //
 writer.encrypt({ foo: 'hello' }) // Changes the binary format to be utf-8 encoded JSON data.
 
 const differentCodec = new Writer({ ...writer.toJSON(), codec: 'msgpack' })
-writer.encrypt({ foo: 'hello' }) // Looks same but the binary data is now encoded using msgpack
+differentCodec.encrypt({ foo: 'hello' }) // Looks same but the binary data is now encoded using msgpack
 ```
 
 ### .verifier

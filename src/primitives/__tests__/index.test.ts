@@ -152,19 +152,19 @@ describe('Permission and encryption for channels', () => {
   it('sender as string', () => {
     const { writer: sender } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(sender.toString()).toBe(`Writer(msgpack|${prettyHash(sender.verifyKey)})`)
+    expect(sender.toString()).toBe(`Writer(msgpack|${prettyHash(sender.verifyKeyHex)})`)
   })
 
   it('receiver as string', () => {
     const { reader: receiver } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(receiver.toString()).toBe(`Reader(msgpack|${prettyHash(receiver.verifyKey)})`)
+    expect(receiver.toString()).toBe(`Reader(msgpack|${prettyHash(receiver.verifyKeyHex)})`)
   })
 
   it('verifier as string', () => {
     const { verifier: annonymous } = createChannel()
     // eslint-disable-next-line @typescript-eslint/no-base-to-string
-    expect(annonymous.toString()).toBe(`Verifier(${prettyHash(annonymous.verifyKey)})`)
+    expect(annonymous.toString()).toBe(`Verifier(${prettyHash(annonymous.verifyKeyHex)})`)
   })
 
   it('encrypt without signing', () => {
@@ -277,5 +277,17 @@ describe('Signing vectors', () => {
     expect(resConn.output.outVector?.toJSON()).toEqual(conn.output.outVector?.toJSON())
     expect(resConn.input.inVector).toBeDefined()
     expect(resConn.input.inVector?.toJSON()).toEqual(conn.input.inVector?.toJSON())
+  })
+  it('non-default codec support', () => {
+    const channel = createChannel({ codec: 'binary' })
+    const encrypted = channel.writer.encrypt(Buffer.from('hello', 'utf8'))
+    const decrypted = channel.reader.decrypt(encrypted)
+    expect(channel.writer.codec.name).toBe(channel.reader.codec.name)
+    expect(decrypted.toString('utf8')).toBe('hello')
+  })
+  it('custom codec support', () => {
+    const channel = createChannel({ codec: { name: 'test', encode: (_: number): Buffer => Buffer.from('abcd'), decode: (input: Uint8Array) => input[0] } })
+    expect(channel.writer.codec.name).toBe('test')
+    expect(channel.writer.codec).toBe(channel.reader.codec)
   })
 })

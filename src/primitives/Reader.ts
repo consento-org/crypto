@@ -7,7 +7,7 @@ import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
 import { decode } from '@msgpack/msgpack'
 import { SignVector } from './SignVector'
-import codecs, { Codec, CodecOption } from '@consento/codecs'
+import codecs, { Codec, CodecOption, InType, OutType } from '@consento/codecs'
 
 function assertVectoredMessage (input: any): asserts input is [ body: Uint8Array, signature: Uint8Array ] {
   if (!Array.isArray(input)) {
@@ -105,30 +105,36 @@ export class Reader <TCodec extends CodecOption = undefined> extends Inspectable
   _inspect (_: number, { stylize }: InspectOptions): string {
     const vector = this.inVector !== undefined ? `#${this.inVector.index}` : ''
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `Reader(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.verifyKey), 'string')}${vector})`
+    return `Reader(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.verifyKeyHex), 'string')}${vector})`
   }
 
-  encryptOnly (message: any): Uint8Array {
-    return encryptMessage(this.encryptKey, message)
+  encryptOnly (message: InType<TCodec, 'msgpack'>): Uint8Array {
+    return encryptMessage(this.encryptKey, this.codec.encode(message))
   }
 
-  decrypt (encrypted: IEncryptedMessage): any {
-    return decryptMessage(
+  decrypt (encrypted: IEncryptedMessage | Uint8Array): any {
+    return this.codec.decode(decryptMessage(
+      this.verifier.verifyKey,
+      this.encryptKey,
+      this.decryptKey,
+      encrypted
+    ))
+  }
+
+  decryptNext (encrypted: IEncryptedMessage): OutType<TCodec, 'msgpack'> {
+    if (this.inVector === undefined) {
+      return this.decrypt(encrypted)
+    }
+    const decrypted = decryptMessage(
       this.verifier.verifyKey,
       this.encryptKey,
       this.decryptKey,
       encrypted
     )
-  }
-
-  decryptNext (encrypted: IEncryptedMessage): any {
-    if (this.inVector === undefined) {
-      return this.decrypt(encrypted)
-    }
-    const raw = decode(this.decrypt(encrypted))
+    const raw = decode(decrypted)
     assertVectoredMessage(raw)
     const [body, signature] = raw
     this.inVector.verify(body, signature)
-    return decode(body)
+    return this.codec.decode(body)
   }
 }

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/method-signature-style */
-import codecs, { Codec, CodecOption, INamedCodec } from '@consento/codecs'
+import codecs, { Codec, CodecName, CodecOption, InType, OutType, INamedCodec } from '@consento/codecs'
 import { IStringOrBuffer } from './util/types'
 
 export interface IEncryptedMessage {
@@ -50,12 +50,10 @@ export interface IVerifier extends IChannelActor {
   verifyMessage(message: IEncryptedMessage): boolean
 }
 
-type PropType<TObj, TProp extends keyof TObj> = TObj[TProp]
-
-export interface IWriterJSON <TCodec extends INamedCodec> {
+export interface IWriterJSON <TCodec extends CodecOption> {
   writerKey: string
   outVector?: ISignVectorJSON
-  codec: PropType<TCodec, 'name'>
+  codec: CodecName<TCodec>
 }
 
 export interface IWriterOptions <TCodec extends CodecOption> {
@@ -74,16 +72,16 @@ export interface IWriter <TCodec extends INamedCodec> extends IChannelActor {
   readonly codec: TCodec
   outVector?: ISignVector
   sign(data: Uint8Array): Uint8Array
-  encrypt(message: any): IEncryptedMessage
-  encryptOnly(message: any): Uint8Array
-  encryptNext(message: any): IEncryptedMessage
-  encryptOnlyNext(message: any): Uint8Array
+  encrypt(message: InType<TCodec>): IEncryptedMessage
+  encryptOnly(message: InType<TCodec>): Uint8Array
+  encryptNext(message: InType<TCodec>): IEncryptedMessage
+  encryptOnlyNext(message: InType<TCodec>): Uint8Array
 }
 
-export interface IReaderJSON <TCodec extends INamedCodec> {
+export interface IReaderJSON <TCodec extends CodecOption> {
   readerKey: string
   inVector?: ISignVectorJSON
-  codec: PropType<TCodec, 'name'>
+  codec: CodecName<TCodec>
 }
 
 export interface IReaderOptions <TCodec extends CodecOption> {
@@ -104,9 +102,9 @@ export interface IReader <TCodec extends INamedCodec> extends IChannelActor {
    *
    * @param encrypted signed or unsigned message
    */
-  decrypt(encrypted: IEncryptedMessage | Uint8Array): any
-  decryptNext(encrypted: IEncryptedMessage | Uint8Array): any
-  encryptOnly(message: any): Uint8Array
+  decrypt(encrypted: IEncryptedMessage | Uint8Array): OutType<TCodec>
+  decryptNext(encrypted: IEncryptedMessage | Uint8Array): OutType<TCodec>
+  encryptOnly(message: InType<TCodec>): Uint8Array
 }
 
 export interface ISignVector {
@@ -131,8 +129,8 @@ export interface ISignVectorJSON {
 
 export interface IConnectionJSON <TInputCodec extends INamedCodec, TOutputCodec extends INamedCodec> {
   connectionKey: string
-  inCodec: PropType<TInputCodec, 'name'>
-  outCodec: PropType<TOutputCodec, 'name'>
+  inCodec: CodecName<TInputCodec>
+  outCodec: CodecName<TOutputCodec>
   inVector?: ISignVectorJSON
   outVector?: ISignVectorJSON
 }
@@ -153,9 +151,9 @@ export type IConnectionOptions <TInputCodec extends CodecOption, TOutputCodec ex
   outVector?: ISignVectorOptions
 }
 
-export interface IChannelJSON<TCodec extends INamedCodec> {
+export interface IChannelJSON<TCodec extends CodecOption> {
   channelKey: string
-  codec: PropType<TCodec, 'name'>
+  codec: CodecName<TCodec>
   inVector?: ISignVectorJSON
   outVector?: ISignVectorJSON
 }

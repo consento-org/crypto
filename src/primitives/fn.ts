@@ -1,6 +1,5 @@
 import { EDecryptionError, IChannelOptions, IEncryptedMessage, IEncryptionKeys, ISignKeys, ISignVector } from '../types'
 import * as sodium from 'sodium-universal'
-import { encode, decode } from '@msgpack/msgpack'
 import { Channel } from './Channel'
 import { Buffer } from 'buffer'
 import { SignVector } from './SignVector'
@@ -40,8 +39,7 @@ export function createSignKeys (): ISignKeys {
   return keys
 }
 
-export function encryptMessage (writeKey: Uint8Array, message: any): Uint8Array {
-  const msgBuffer = encode(message)
+export function encryptMessage (writeKey: Uint8Array, msgBuffer: Uint8Array): Uint8Array {
   const body = malloc(msgBuffer.length + CRYPTO_BOX_SEALBYTES)
   boxSeal(body, msgBuffer, writeKey)
   return body
@@ -55,22 +53,24 @@ export function verifyMessage (verifyKey: Uint8Array, message: IEncryptedMessage
   return _verify(message.signature, message.body, verifyKey)
 }
 
-export function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): any {
-  let bodyIn: Uint8Array
+export function verifyBody (verifyKey: Uint8Array, message: IEncryptedMessage | Uint8Array): Uint8Array {
   if (message instanceof Uint8Array) {
-    bodyIn = message
-  } else {
-    bodyIn = message.body
-    if (!verify(verifyKey, message.signature, bodyIn)) {
-      throw Object.assign(new Error('Invalid signature'), { code: EDecryptionError.invalidSignature })
-    }
+    return message
   }
-  const messageDecrypted = malloc(bodyIn.length - CRYPTO_BOX_SEALBYTES)
-  const successful = boxSealOpen(messageDecrypted, bodyIn, writeKey, readKey)
+  if (!verify(verifyKey, message.signature, message.body)) {
+    throw Object.assign(new Error('Invalid signature'), { code: EDecryptionError.invalidSignature })
+  }
+  return message.body
+}
+
+export function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): Uint8Array {
+  const body = verifyBody(verifyKey, message)
+  const messageDecrypted = malloc(body.length - CRYPTO_BOX_SEALBYTES)
+  const successful = boxSealOpen(messageDecrypted, body, writeKey, readKey)
   if (!successful) {
     throw Object.assign(new Error('Can not decrypt data. Is it encryted with different key?'), { code: EDecryptionError.invalidEncryption })
   }
-  return decode(messageDecrypted)
+  return messageDecrypted
 }
 
 export function sign (signKey: Uint8Array, body: Uint8Array): Uint8Array {

@@ -70,7 +70,7 @@ export class Channel <TCodec extends CodecOption = undefined> extends Inspectabl
 
   _inspect (_: number, { stylize }: InspectOptions): string {
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `Channel(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.reader.verifyKey), 'string')})`
+    return `Channel(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.reader.verifyKeyHex), 'string')})`
   }
 
   toJSON (): IChannelJSON<Codec<TCodec, 'msgpack'>> {
