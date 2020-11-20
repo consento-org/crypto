@@ -6,8 +6,8 @@ import { encryptMessage, sign } from './fn'
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
 import { SignVector } from './SignVector'
-import { encode } from '@msgpack/msgpack'
 import codecs, { Codec, CodecOption, InType } from '@consento/codecs'
+import { signVectorCodec } from '../util/signVectorCodec'
 
 export class Writer <TCodec extends CodecOption = undefined> extends Inspectable implements IWriter<Codec<TCodec, 'msgpack'>> {
   _writerKey?: Uint8Array
@@ -125,9 +125,9 @@ export class Writer <TCodec extends CodecOption = undefined> extends Inspectable
       return this.encryptOnly(message)
     }
     const body = this.codec.encode(message)
-    return encryptMessage(this.encryptKey, encode([
+    return encryptMessage(this.encryptKey, signVectorCodec.encode({
       body,
-      this.outVector.sign(body)
-    ]))
+      signature: this.outVector.sign(body)
+    }))
   }
 }

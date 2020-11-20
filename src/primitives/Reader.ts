@@ -1,25 +1,13 @@
-import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions, ISignVector, EDecryptionError } from '../types'
+import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions, ISignVector } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, decryptKeyFromReceiveKey, verifyKeyFromSendOrReceiveKey } from './key'
 import { bufferToString, exists, Inspectable, toBuffer } from '../util'
 import { encryptMessage, decryptMessage } from './fn'
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
-import { decode } from '@msgpack/msgpack'
 import { SignVector } from './SignVector'
 import codecs, { Codec, CodecOption, InType, OutType } from '@consento/codecs'
-
-function assertVectoredMessage (input: any): asserts input is [ body: Uint8Array, signature: Uint8Array ] {
-  if (!Array.isArray(input)) {
-    throw Object.assign(new Error('Message needs to be an array'), { code: EDecryptionError.invalidMessage })
-  }
-  if (input.length === 0) {
-    throw Object.assign(new Error('The next structure needs to have a body.'), { code: EDecryptionError.missingBody })
-  }
-  if (input.length === 1) {
-    throw Object.assign(new Error('The next structure needs to have a signature.'), { code: EDecryptionError.missingSignature })
-  }
-}
+import { signVectorCodec } from '../util/signVectorCodec'
 
 export class Reader <TCodec extends CodecOption = undefined> extends Inspectable implements IReader <Codec<TCodec, 'msgpack'>> {
   _receiveKey?: Uint8Array
@@ -131,9 +119,7 @@ export class Reader <TCodec extends CodecOption = undefined> extends Inspectable
       this.decryptKey,
       encrypted
     )
-    const raw = decode(decrypted)
-    assertVectoredMessage(raw)
-    const [body, signature] = raw
+    const { body, signature } = signVectorCodec.decode(decrypted)
     this.inVector.verify(body, signature)
     return this.codec.decode(body)
   }
