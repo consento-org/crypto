@@ -8,9 +8,9 @@ const _long = fromNumber(0)
 const _empty = new Uint8Array(0)
 const _set: Uint8Array[] = [_length, _empty, _empty]
 
-export const signVectorCodec: INamedCodec<'sign-vector', { signature: Uint8Array, body: Uint8Array }> = {
-  name: 'sign-vector',
-  [inspect]: codecs.inspect('{signature,body}', 'sign-vector'),
+export const signedBodyCodec: INamedCodec<'signed-body', { signature: Uint8Array, body: Uint8Array }> = {
+  name: 'signed-body',
+  [inspect]: codecs.inspect('{signature,body}', 'signed-body'),
   encode: ({ signature, body }) => {
     toBytes(fromNumber(signature.length, true, _long), _length)
     _set[1] = signature

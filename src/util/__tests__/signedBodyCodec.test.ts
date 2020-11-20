@@ -1,7 +1,7 @@
 import { Buffer } from 'buffer'
-import { signVectorCodec } from '../signVectorCodec'
+import { signedBodyCodec } from '../signedBodyCodec'
 
-const { decode, encode } = signVectorCodec
+const { decode, encode } = signedBodyCodec
 
 describe('signvector', () => {
   it('can encode and decode', () => {

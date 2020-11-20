@@ -26,8 +26,6 @@ export function getIOFromConnectionOptions <TInputCodec extends CodecOption = un
   let writerKey: Uint8Array
   let inCodec = opts.inCodec
   let outCodec = opts.outCodec
-  let inVector = opts.inVector
-  let outVector = opts.outVector
   let connectionKey: Uint8Array
   let connectionKeyBase64: string | undefined
   if (isConnectionOptionsByKey(opts)) {
@@ -42,14 +40,12 @@ export function getIOFromConnectionOptions <TInputCodec extends CodecOption = un
       readerKey = toBuffer(opts.input)
     } else {
       readerKey = toBuffer(opts.input.readerKey)
-      inVector = inVector ?? opts.input.inVector
       inCodec = inCodec ?? opts.input.codec as any
     }
     if (isStringOrBuffer(opts.output)) {
       writerKey = toBuffer(opts.output)
     } else {
       writerKey = toBuffer(opts.output.writerKey)
-      outVector = outVector ?? opts.output.outVector
       outCodec = outCodec ?? opts.output.codec as any
     }
     connectionKey = Buffer.concat([readerKey, writerKey])
@@ -59,8 +55,8 @@ export function getIOFromConnectionOptions <TInputCodec extends CodecOption = un
   return {
     connectionKey,
     connectionKeyBase64,
-    input: new Reader({ readerKey, inVector, codec: inCodec }),
-    output: new Writer({ writerKey, outVector, codec: outCodec })
+    input: new Reader({ readerKey, codec: inCodec }),
+    output: new Writer({ writerKey, codec: outCodec })
   }
 }
 
@@ -93,23 +89,15 @@ export class Connection <TInputCodec extends CodecOption = undefined, TOutputCod
     return {
       connectionKey: this.connectionKeyBase64,
       inCodec: this.input.codec.name,
-      outCodec: this.output.codec.name,
-      inVector: this.input.inVector?.toJSON(),
-      outVector: this.output.outVector?.toJSON()
+      outCodec: this.output.codec.name
     }
   }
 
   _inspect (_: number, { stylize }: InspectOptions): string {
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    let input: string = `input=${stylize(this.input.codec.name, 'special')}|${stylize(prettyHash(this.input.verifyKey), 'string')}`
-    if (this.input.inVector !== undefined) {
-      input += `#${this.input.inVector.index}`
-    }
+    const input: string = `input=${stylize(this.input.codec.name, 'special')}|${stylize(prettyHash(this.input.verifyKey), 'string')}`
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    let output: string = `output=${stylize(this.output.codec.name, 'special')}|${stylize(prettyHash(this.output.verifyKey), 'string')}`
-    if (this.output.outVector !== undefined) {
-      output += `#${this.output.outVector.index}`
-    }
+    const output: string = `output=${stylize(this.output.codec.name, 'special')}|${stylize(prettyHash(this.output.verifyKey), 'string')}`
     return `Connection(${input}, ${output})`
   }
 }

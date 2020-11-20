@@ -52,13 +52,11 @@ export interface IVerifier extends IChannelActor {
 
 export interface IWriterJSON <TCodec extends CodecOption> {
   writerKey: string
-  outVector?: ISignVectorJSON
   codec: CodecName<TCodec>
 }
 
 export interface IWriterOptions <TCodec extends CodecOption> {
   writerKey: IStringOrBuffer
-  outVector?: ISignVectorOptions
   codec?: TCodec
 }
 
@@ -70,23 +68,18 @@ export interface IWriter <TCodec extends INamedCodec> extends IChannelActor {
   readonly signKey: Uint8Array
   readonly verifier: IVerifier
   readonly codec: TCodec
-  outVector?: ISignVector
   sign(data: Uint8Array): Uint8Array
-  encrypt(message: InType<TCodec>): IEncryptedMessage
-  encryptOnly(message: InType<TCodec>): Uint8Array
-  encryptNext(message: InType<TCodec>): IEncryptedMessage
-  encryptOnlyNext(message: InType<TCodec>): Uint8Array
+  encrypt(message: InType<TCodec>, signVector?: ISignVector): IEncryptedMessage
+  encryptOnly(message: InType<TCodec>, signVector?: ISignVector): Uint8Array
 }
 
 export interface IReaderJSON <TCodec extends CodecOption> {
   readerKey: string
-  inVector?: ISignVectorJSON
   codec: CodecName<TCodec>
 }
 
 export interface IReaderOptions <TCodec extends CodecOption> {
   readerKey: IStringOrBuffer
-  inVector?: ISignVectorOptions
   codec?: TCodec
 }
 
@@ -95,16 +88,14 @@ export interface IReader <TCodec extends INamedCodec> extends IChannelActor {
   readonly readerKeyBase64: string
   readonly verifier: IVerifier
   readonly codec: TCodec
-  inVector?: ISignVector
   toJSON(): IReaderJSON<TCodec>
   /**
    * Decrypts a message written by an associated Sender
    *
    * @param encrypted signed or unsigned message
    */
-  decrypt(encrypted: IEncryptedMessage | Uint8Array): OutType<TCodec>
-  decryptNext(encrypted: IEncryptedMessage | Uint8Array): OutType<TCodec>
-  encryptOnly(message: InType<TCodec>): Uint8Array
+  decrypt(encrypted: IEncryptedMessage | Uint8Array, signVector?: ISignVector): OutType<TCodec>
+  encryptOnly(message: InType<TCodec>, signVector?: ISignVector): Uint8Array
 }
 
 export interface ISignVector {
@@ -131,8 +122,6 @@ export interface IConnectionJSON <TInputCodec extends INamedCodec, TOutputCodec 
   connectionKey: string
   inCodec: CodecName<TInputCodec>
   outCodec: CodecName<TOutputCodec>
-  inVector?: ISignVectorJSON
-  outVector?: ISignVectorJSON
 }
 
 export interface IConnectionOptionsByKey {
@@ -147,22 +136,16 @@ export interface IConnectionOptionsByIO <TInputCodec extends CodecOption = undef
 export type IConnectionOptions <TInputCodec extends CodecOption, TOutputCodec extends CodecOption> = (IConnectionOptionsByKey | IConnectionOptionsByIO<TInputCodec, TOutputCodec>) & {
   inCodec?: TInputCodec
   outCodec?: TOutputCodec
-  inVector?: ISignVectorOptions
-  outVector?: ISignVectorOptions
 }
 
 export interface IChannelJSON<TCodec extends CodecOption> {
   channelKey: string
   codec: CodecName<TCodec>
-  inVector?: ISignVectorJSON
-  outVector?: ISignVectorJSON
 }
 
 export interface IChannelOptions <TCodec extends CodecOption> {
   channelKey: IStringOrBuffer
   codec?: TCodec
-  inVector?: ISignVectorOptions
-  outVector?: ISignVectorOptions
 }
 
 export interface IChannel <TCodec extends INamedCodec> extends IChannelActor {

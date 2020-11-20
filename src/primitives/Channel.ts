@@ -20,7 +20,7 @@ export class Channel <TCodec extends CodecOption = undefined> extends Inspectabl
   channelKey: Uint8Array
   _channelKeyBase64?: string
 
-  constructor ({ channelKey, inVector, outVector, codec }: IChannelOptions<TCodec>) {
+  constructor ({ channelKey, codec }: IChannelOptions<TCodec>) {
     super()
     if (typeof channelKey === 'string') {
       this._channelKeyBase64 = channelKey
@@ -28,15 +28,13 @@ export class Channel <TCodec extends CodecOption = undefined> extends Inspectabl
     } else {
       this.channelKey = channelKey
     }
-    this.reader = new Reader({ readerKey: readerKeyFromChannelKey(this.channelKey), inVector, codec })
-    this.writer = new Writer({ writerKey: writerKeyFromChannelKey(this.channelKey), outVector, codec })
+    this.reader = new Reader({ readerKey: readerKeyFromChannelKey(this.channelKey), codec })
+    this.writer = new Writer({ writerKey: writerKeyFromChannelKey(this.channelKey), codec })
   }
 
   recodec <TCodec extends CodecOption = undefined> (codec: TCodec): IChannel<Codec<TCodec, 'msgpack'>> {
     return new Channel({
       channelKey: this.channelKey,
-      inVector: this.reader.inVector,
-      outVector: this.writer.outVector,
       codec
     })
   }
@@ -76,8 +74,6 @@ export class Channel <TCodec extends CodecOption = undefined> extends Inspectabl
   toJSON (): IChannelJSON<Codec<TCodec, 'msgpack'>> {
     return {
       channelKey: this.channelKeyBase64,
-      inVector: this.reader.inVector?.toJSON(),
-      outVector: this.writer.outVector?.toJSON(),
       codec: this.reader.codec.name
     }
   }

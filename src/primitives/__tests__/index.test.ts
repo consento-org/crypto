@@ -4,7 +4,6 @@ import { createChannel, Verifier, Reader, Writer, Channel, createSignVectors } f
 import prettyHash from 'pretty-hash'
 import { decode, encode } from '@msgpack/msgpack'
 import { SignVector } from '../SignVector'
-import { Connection } from '../Connection'
 
 describe('Permission and encryption for channels', () => {
   it('a channel is serializable', () => {
@@ -52,7 +51,7 @@ describe('Permission and encryption for channels', () => {
     if (!('writerKey' in json)) {
       throw new Error('Missing writerKey')
     }
-    expect(Object.keys(json)).toEqual(['writerKey', 'outVector', 'codec'])
+    expect(Object.keys(json)).toEqual(['writerKey', 'codec'])
     expect(typeof json.writerKey).toBe('string')
     const recovered = new Writer(json)
     expect(bufferToString(recovered.writerKey)).toBe(bufferToString(original.writerKey))
@@ -71,7 +70,7 @@ describe('Permission and encryption for channels', () => {
   it('a receiver can be restored from its toJSON representation', () => {
     const { reader: original, writer: sender } = createChannel()
     const json = original.toJSON()
-    expect(Object.keys(json)).toEqual(['readerKey', 'inVector', 'codec'])
+    expect(Object.keys(json)).toEqual(['readerKey', 'codec'])
     expect(typeof json.readerKey).toBe('string')
     const recovered = new Reader(json)
     expect(bufferToString(recovered.readerKey)).toBe(bufferToString(original.readerKey))
@@ -224,59 +223,26 @@ describe('Signing vectors', () => {
   it('use with writer/reader', () => {
     const { inVector, outVector } = createSignVectors()
     const { writer, reader } = createChannel()
-    writer.outVector = outVector
-    reader.inVector = inVector
-    const encryptedA = writer.encryptNext('hello')
-    const encryptedB = writer.encryptNext('world')
-    expect(reader.decryptNext(encryptedA)).toBe('hello')
-    expect(reader.decryptNext(encryptedB)).toBe('world')
+    const encryptedA = writer.encrypt('hello', outVector)
+    const encryptedB = writer.encrypt('world', outVector)
+    expect(reader.decrypt(encryptedA, inVector)).toBe('hello')
+    expect(reader.decrypt(encryptedB, inVector)).toBe('world')
   })
   it('wrong order with writer/reader', () => {
     const { inVector, outVector } = createSignVectors()
     const { writer, reader } = createChannel()
-    writer.outVector = outVector
-    reader.inVector = inVector
-    writer.encryptNext('hello')
-    const encryptedB = writer.encryptNext('world')
+    writer.encrypt('hello', outVector)
+    const encryptedB = writer.encrypt('world', outVector)
     expect(() => {
-      reader.decryptNext(encryptedB)
+      reader.decrypt(encryptedB, inVector)
     }).toThrow(new Error('Unexpected next index (expected=0, found=1)'))
   })
   it('use with writer/reader serialization', () => {
     const { inVector, outVector } = createSignVectors()
-    const { writer, reader } = createChannel()
-    writer.outVector = outVector
-    const resWriter = new Writer(writer.toJSON())
-    expect(resWriter.outVector).toBeDefined()
-    expect(resWriter.outVector?.toJSON()).toEqual(writer.outVector?.toJSON())
-    reader.inVector = inVector
-    const resReader = new Reader(reader.toJSON())
-    expect(resReader.inVector).toBeDefined()
-    expect(resReader.inVector?.toJSON()).toEqual(reader.inVector?.toJSON())
-  })
-  it('use with channel serialization', () => {
-    const { inVector, outVector } = createSignVectors()
-    const channel = createChannel()
-    channel.writer.outVector = outVector
-    channel.reader.inVector = inVector
-    const resChannel = new Channel(channel.toJSON())
-    expect(resChannel.writer.outVector).toBeDefined()
-    expect(resChannel.writer.outVector?.toJSON()).toEqual(channel.writer.outVector?.toJSON())
-    expect(resChannel.reader.inVector).toBeDefined()
-    expect(resChannel.reader.inVector?.toJSON()).toEqual(channel.reader.inVector?.toJSON())
-  })
-  it('use with connection serialization', () => {
-    const { inVector, outVector } = createSignVectors()
-    const { writer: output } = createChannel()
-    const { reader: input } = createChannel()
-    const conn = new Connection({ input, output })
-    conn.output.outVector = outVector
-    conn.input.inVector = inVector
-    const resConn = new Connection(conn.toJSON())
-    expect(resConn.output.outVector).toBeDefined()
-    expect(resConn.output.outVector?.toJSON()).toEqual(conn.output.outVector?.toJSON())
-    expect(resConn.input.inVector).toBeDefined()
-    expect(resConn.input.inVector?.toJSON()).toEqual(conn.input.inVector?.toJSON())
+    const resInVector = new SignVector(inVector.toJSON())
+    const resOutVector = new SignVector(outVector.toJSON())
+    expect(resOutVector.toJSON()).toEqual(outVector.toJSON())
+    expect(resInVector.toJSON()).toEqual(inVector.toJSON())
   })
   it('non-default codec support', () => {
     const channel = createChannel({ codec: 'binary' })
