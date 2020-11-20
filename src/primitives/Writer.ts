@@ -124,10 +124,10 @@ export class Writer <TCodec extends CodecOption = undefined> extends Inspectable
     if (this.outVector === undefined) {
       return this.encryptOnly(message)
     }
-    const body = this.codec.encode(message)
-    return encryptMessage(this.encryptKey, signVectorCodec.encode({
+    const body = encryptMessage(this.encryptKey, this.codec.encode(message))
+    return signVectorCodec.encode({
       body,
       signature: this.outVector.sign(body)
-    }))
+    })
   }
 }

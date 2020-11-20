@@ -2,7 +2,7 @@ import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions, ISi
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, decryptKeyFromReceiveKey, verifyKeyFromSendOrReceiveKey } from './key'
 import { bufferToString, exists, Inspectable, toBuffer } from '../util'
-import { encryptMessage, decryptMessage } from './fn'
+import { encryptMessage, verifyBody, decryptBody } from './fn'
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
 import { SignVector } from './SignVector'
@@ -101,11 +101,11 @@ export class Reader <TCodec extends CodecOption = undefined> extends Inspectable
   }
 
   decrypt (encrypted: IEncryptedMessage | Uint8Array): any {
-    return this.codec.decode(decryptMessage(
-      this.verifier.verifyKey,
+    const body = verifyBody(this.verifyKey, encrypted)
+    return this.codec.decode(decryptBody(
       this.encryptKey,
       this.decryptKey,
-      encrypted
+      body
     ))
   }
 
@@ -113,14 +113,12 @@ export class Reader <TCodec extends CodecOption = undefined> extends Inspectable
     if (this.inVector === undefined) {
       return this.decrypt(encrypted)
     }
-    const decrypted = decryptMessage(
-      this.verifier.verifyKey,
+    const { body, signature } = signVectorCodec.decode(verifyBody(this.verifyKey, encrypted))
+    this.inVector.verify(body, signature)
+    return this.codec.decode(decryptBody(
       this.encryptKey,
       this.decryptKey,
-      encrypted
-    )
-    const { body, signature } = signVectorCodec.decode(decrypted)
-    this.inVector.verify(body, signature)
-    return this.codec.decode(body)
+      body
+    ))
   }
 }

@@ -63,8 +63,7 @@ export function verifyBody (verifyKey: Uint8Array, message: IEncryptedMessage | 
   return message.body
 }
 
-export function decryptMessage (verifyKey: Uint8Array, writeKey: Uint8Array, readKey: Uint8Array, message: IEncryptedMessage | Uint8Array): Uint8Array {
-  const body = verifyBody(verifyKey, message)
+export function decryptBody (writeKey: Uint8Array, readKey: Uint8Array, body: Uint8Array): Uint8Array {
   const messageDecrypted = malloc(body.length - CRYPTO_BOX_SEALBYTES)
   const successful = boxSealOpen(messageDecrypted, body, writeKey, readKey)
   if (!successful) {
