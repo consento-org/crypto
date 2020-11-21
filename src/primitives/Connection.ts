@@ -48,7 +48,7 @@ export function getIOFromConnectionOptions <TInputCodec extends CodecOption = un
       writerKey = toBuffer(opts.output.writerKey)
       outCodec = outCodec ?? opts.output.codec as any
     }
-    connectionKey = Buffer.concat([readerKey, writerKey])
+    connectionKey = Buffer.concat([Buffer.from(readerKey), Buffer.from(writerKey)])
   } else {
     throw new Error('Options for connection invalid, either connectionKey or input/output must be given.')
   }

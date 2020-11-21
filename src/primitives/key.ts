@@ -57,7 +57,8 @@ export function readerKeyFromChannelKey (channelKey: Uint8Array): Uint8Array {
 }
 
 export function writerKeyFromChannelKey (channelKey: Uint8Array): Uint8Array {
-  return Buffer.concat([channelKey.slice(ENCRYPT_KEY_START, VERIFY_KEY_END), channelKey.slice(SIGN_KEY_CHANNEL_START, SIGN_KEY_CHANNEL_END)])
+  const channelBuf = Buffer.from(channelKey)
+  return Buffer.concat([channelBuf.slice(ENCRYPT_KEY_START, VERIFY_KEY_END), channelBuf.slice(SIGN_KEY_CHANNEL_START, SIGN_KEY_CHANNEL_END)])
 }
 
 export function inReaderKeyFromConnectionKey (connectionKey: Uint8Array): Uint8Array {

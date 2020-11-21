@@ -1,32 +1,33 @@
 import codecs, { INamedCodec } from '@consento/codecs'
 import { Buffer } from 'buffer'
-import { fromBytes, toBytes, toNumber, fromNumber } from 'longfn'
 import inspect from 'inspect-custom-symbol'
 
-const _length = new Uint8Array(8)
-const _long = fromNumber(0)
-const _empty = new Uint8Array(0)
-const _set: Uint8Array[] = [_length, _empty, _empty]
+const length = Buffer.alloc(1, 0)
+const empty = Buffer.alloc(0)
+const list: Buffer[] = [length, empty, empty]
 
 export const signedBodyCodec: INamedCodec<'signed-body', { signature: Uint8Array, body: Uint8Array }> = {
   name: 'signed-body',
   [inspect]: codecs.inspect('{signature,body}', 'signed-body'),
   encode: ({ signature, body }) => {
-    toBytes(fromNumber(signature.length, true, _long), _length)
-    _set[1] = signature
-    _set[2] = body
-    const res = Buffer.concat(_set)
-    _set[1] = _empty
-    _set[2] = _empty
+    if (signature.byteLength > 256) {
+      throw new Error('The signature is not supposed to be more than 256 bytes long')
+    }
+    length[0] = signature.byteLength
+    list[1] = Buffer.from(signature) // See https://github.com/feross/buffer/pull/277
+    list[2] = Buffer.from(body)
+    const res = Buffer.concat(list)
+    list[1] = empty
+    list[2] = empty
     return res
   },
   decode: encoded => {
-    const size = toNumber(fromBytes(encoded, true, _long))
     const buf = Buffer.from(encoded)
-    const slicer = size + 8
+    const len: number = buf[0]
+    const sliceIndex = 1 + len
     return {
-      signature: buf.slice(8, slicer),
-      body: buf.slice(slicer)
+      signature: buf.slice(1, sliceIndex),
+      body: buf.slice(sliceIndex)
     }
   }
 }

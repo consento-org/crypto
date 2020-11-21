@@ -100,7 +100,7 @@ export function createChannel <TCodec extends CodecOption = undefined> (opts?: O
   const encrypt = createEncryptionKeys()
   const sign = createSignKeys()
   return new Channel<TCodec>({
-    channelKey: Buffer.concat([encrypt.encryptKey, sign.verifyKey, encrypt.decryptKey, sign.signKey]),
+    channelKey: Buffer.concat([Buffer.from(encrypt.encryptKey), Buffer.from(sign.verifyKey), Buffer.from(encrypt.decryptKey), Buffer.from(sign.signKey)]),
     ...opts
   })
 }

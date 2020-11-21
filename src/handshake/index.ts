@@ -30,7 +30,7 @@ function createHandshake (): { secretKey: Uint8Array, publicKey: Uint8Array } {
 
 const handshakeCodec: INamedCodec<'handshake', { token: Uint8Array, writerKey: Uint8Array }> = {
   name: 'handshake',
-  encode: ({ token, writerKey }) => Buffer.concat([HANDSHAKE_MSG_VERSION, token, writerKey]),
+  encode: ({ token, writerKey }) => Buffer.concat([HANDSHAKE_MSG_VERSION, Buffer.from(token), Buffer.from(writerKey)]),
   decode: msg => {
     if (msg[0] !== HANDSHAKE_MSG_VERSION[0]) {
       throw Object.assign(new Error(`Error while processing handshake: Unknown handshake format: ${msg[0]}`), { code: 'unknown-message-format', messageFormat: msg[0] })

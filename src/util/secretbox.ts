@@ -27,7 +27,7 @@ export function encrypt (secretKey: Uint8Array, message: Uint8Array): Uint8Array
   const nonce = randomBuffer(CRYPTO_SECRETBOX_NONCEBYTES)
   const ciphertext = malloc(CRYPTO_SECRETBOX_MACBYTES + message.length)
   secretBoxEasy(ciphertext, message, nonce, secretKey)
-  const buffer = Buffer.concat([nonce, ciphertext])
+  const buffer = Buffer.concat([Buffer.from(nonce), ciphertext])
   return buffer
 }
 
