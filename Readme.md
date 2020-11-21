@@ -3,15 +3,54 @@
 `@consento/crypto` is a set of crypto primitives useful for the communication within the
 consento workflow.
 
+## State
+
+Pre 1.0. This library is under heavy development. There are still updates to both the interna
+of this library and to namings.
+
 ## Goal
 
-There are several crypto implementations out there, some work well on the server others work
-in the browser, however due to asynchronisity issue in the libraries (some are sync, some async)
-they don't work on either system. This library simplifies existing API's to a distilled
-version that will work easily on server and mobile phones.
+[`libsodium`](https://doc.libsodium.org/) is a good crypto foundation to build on but
+using it as-is presents various issues:
 
-The implementation offered is as synchronous as possible, offering serialization (toJSON/Classes)
-for all data types.
+> `keys` are all of the same type (`Uint8Array`) and its easy to mistake one key for another one.
+
+This library is set out to create a good dictionary and structure on top of `libsodium` that
+enables users to clearly understand what happens where. This is achived through proper naming: for example:
+we distinguish `verifyKey` and `decryptKey` which would both be called `pk` in `libsodium`. This
+extends to the type definition which are as expressive as possible.
+
+> Users need to know both the `key` type and the implementation to use it which makes it prone to type errors.
+
+In this library we have structures like `Writer` that keep the `encryptKey` needed for a `encryption` operation
+making an API like `writer.encrypt('message')` possible, which natively would look like
+`crypto_box_seal(encryptKey, stringToBuffer('message'))`.
+
+> `libsodium` works with `Uint8Array` but users have `Objects`.
+
+Any data that is processed with `libsodium` is binary, which gives is flexibly but not how it's used in practice.
+With this library comes `codec` support for all structures. You can specify for a `read` and `write` process to
+use complex data structures, even supporting custom structures if you need those. Core strategy here is to specify
+the types to a great detail with TypeScript. For example, the `Writer` has a generic information for the codec:
+`Writer<typeof codecs.msgpack>` which means you can see while coding what data the `Writer` can encode anything
+that is encodable with msgpack.
+
+> The de-/serialization of structures using `libsodium` can be tedious.
+
+Everything in this library can be serialized with `.toJSON()` and restored with the constructor. Example:
+`new Writer(writer.toJSON())`. This allows for an easy means to preserve the data structure in a standard format.
+A goal for `2.0.0` is to provide protocol buffer de-/encoding to allow more efficent data structures.
+
+## Topics
+
+- [Encrypted Communication](#encrypted-communication) - Sending messages between agents using [public key cryptography][PPC].
+- [Establishing Connections](#establishing-connections) - Creating new connections between agents (aka. [Handshake][Handshake]).
+- [Encrypted Blobs](#encrypted-blobs) - Encryption for [Blobs][Blob] that results in [Content-addressable][CADDR] data.
+
+[PPC]: https://en.wikipedia.org/wiki/Public-key_cryptography
+[Handshake]: https://en.wikipedia.org/wiki/Handshaking
+[Blob]: https://en.wikipedia.org/wiki/Binary_large_object
+[CADDR]: https://en.wikipedia.org/wiki/Content-addressable_storage
 
 ## Vocabulary
 
@@ -28,7 +67,7 @@ for all data types.
 - `Codec` - Data written by a reader or read by a writer will be transported binary (`Uint8Array`), a `Codec` specifies how an object read
     or written will be translated from/to binary data.
 
-## Sending/Receiving encrypted messages
+## Encrypted Communication
 
 The crypto library contains useful primitives for sending e2e encrypted messages through public channels.
 
@@ -72,7 +111,7 @@ new Writer(writer.toJSON())
 new Verifier(verifier.toJSON())
 ```
 
-## Codecs
+### Codecs
 
 Any data sent out through `Writer`s or `Reader`s is encoded using mechanism, by default it will be using `msgpack`
 but you can specify any codec supported by [`@consento/codecs`](https://github.com/consento-org/codecs).
@@ -87,7 +126,7 @@ const differentCodec = new Writer({ ...writer.toJSON(), codec: 'msgpack' })
 differentCodec.encrypt({ foo: 'hello' }) // Looks same but the binary data is now encoded using msgpack
 ```
 
-## Sign-Vectors
+### Sign-Vectors
 
 The `encrypt`, `decrypt` and `verify` operations can be extended using a `SignVector`. The `SignVector`
 allows for all operations to be in sequential order. In other words: the chunks need to be decrypted/verified
@@ -254,7 +293,7 @@ Get the content of a once encrypted message.
 const message = reader.decrypt(message:)
 ```
 
-## Creating a handshake
+## Establishing Connections
 
 `crypto` also holds primitives for a decentralized handshake mechanism.
 
@@ -323,7 +362,7 @@ bobToAliceReceiver.decrypt(aliceToBobSender.encrypt('Hello Bob!')) // Hello Bob!
 aliceToBobReceiver.decrypt(bobToAliceSender.encrypt('Hello Alice!')) // Hello Alice!
 ```
 
-## Blob Support
+## Encrypted Blobs
 
 The crypto api also provides primitives for working with encrypted blobs:
 

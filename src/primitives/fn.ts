@@ -41,9 +41,9 @@ export function createSignKeys (): ISignKeys {
   return keys
 }
 
-export function encryptMessage (writeKey: Uint8Array, msgBuffer: Uint8Array): Uint8Array {
+export function encryptMessage (encryptKey: Uint8Array, msgBuffer: Uint8Array): Uint8Array {
   const body = malloc(msgBuffer.length + CRYPTO_BOX_SEALBYTES)
-  boxSeal(body, msgBuffer, writeKey)
+  boxSeal(body, msgBuffer, encryptKey)
   return body
 }
 
@@ -73,9 +73,9 @@ export function verifyBody (verifyKey: Uint8Array, message: IEncryptedMessage | 
   return body
 }
 
-export function decryptBody (writeKey: Uint8Array, readKey: Uint8Array, body: Uint8Array): Uint8Array {
+export function decryptBody (encryptKey: Uint8Array, decryptKey: Uint8Array, body: Uint8Array): Uint8Array {
   const messageDecrypted = malloc(body.length - CRYPTO_BOX_SEALBYTES)
-  const successful = boxSealOpen(messageDecrypted, body, writeKey, readKey)
+  const successful = boxSealOpen(messageDecrypted, body, encryptKey, decryptKey)
   if (!successful) {
     throw Object.assign(new Error('Can not decrypt data. Is it encryted with different key?'), { code: EDecryptionError.invalidEncryption })
   }
