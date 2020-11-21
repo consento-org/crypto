@@ -256,15 +256,23 @@ export interface IHandshakeConfirmation {
   toJSON(): IHandshakeConfirmationJSON
 }
 
-export interface IEncryptedBlob {
+export interface IEncryptedBlob <TCodec extends INamedCodec> {
   secretKey: Uint8Array
+  codec: TCodec
   size?: number
   path: string[]
-  toJSON (): IEncryptedBlobJSON
+  decrypt (encrypted: Uint8Array): OutType<TCodec>
+  toJSON (): IEncryptedBlobJSON<CodecName<TCodec>>
 }
 
-export interface IEncryptedBlobJSON {
-  secretKey: string
+export interface IEncryptedBlobOptions <TCodec extends CodecOption='binary'> {
+  secretKey: IStringOrBuffer
+  codec?: TCodec
   size?: number
-  path: string[]
+}
+
+export interface IEncryptedBlobJSON <TCodec extends string> {
+  secretKey: string
+  codec?: TCodec
+  size?: number
 }

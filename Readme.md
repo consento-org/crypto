@@ -364,41 +364,52 @@ aliceToBobReceiver.decrypt(bobToAliceSender.encrypt('Hello Alice!')) // Hello Al
 
 ## Encrypted Blobs
 
-The crypto api also provides primitives for working with encrypted blobs:
+This a all-in-one API to encode, encrypt and store binary data and allow
+to easily encrypt it.
+
+**Only one key is necessary** to find and decrypt previously encrypted data!
 
 ```javascript
-const { encryptBlob, decryptBlob, isEncryptedBlob } = setup(sodium)
+const { encryptBlob, isEncryptedBlob } = require('@consento/crypto')
 
 const {
   blob, // Information about a blob: to pass around
   encrypted // Encrypted data to be stored
-} = encryptBlob('Hello Secret!')
-blob.path // Path at which to store the encrypted data
+} = encryptBlob('Hello Secret!', 'utf8')
+blob.locationKey // Key to locate an object for that secret
+blob.path // Path at which to store the encrypted data, useful for file systems
 blob.secretKey // Secretkey to decrypt this data
-blob.size // Number of bytes of the encrypted blob (only available after encryption)
+blob.size // Number of bytes of the encrypted blob (optional information)
 
 isEncryptedBlob(blob) // To verify if a set of data is a blob
 
-const decrypted = decryptBlob(blob.secretKey, encrypted)
+const decrypted = blob.decrypt(encrypted)
 ```
 
-Blob information is serializable with `toJSON` and deserializable using `toEncryptedBlob`.
+Blob information is serializable with `toJSON` and deserializable using the `EncryptedBlob`
+class: 
 
 ```javascript
-const { encryptBlob, decryptBlob, toEncryptedBlob } = setup(sodium)
-
-const { blob } = encryptBlob('Hello Secret!')
+const { blob } = encryptBlob('Hello Secret!', 'utf-8')
 const blobJSON = blob.toJSON()
-const sameBlob = toEncryptedBlob(blobJSON)
+const sameBlob = new EncryptedBlob(blobJSON)
 ```
 
-It is possible to restore a blob from it's `secretKey` but that requires async computation:
+Blob storage is binary by default, if you intend to use encode other types of data use the
+`codec` option.
 
-```javascript
-const { encryptBlob, decryptBlob, toEncryptedBlob } = setup(sodium)
+```js
+const { blob, encrypted } = encryptBlob({ hello: 'world' }, 'msgpack')
+```
+
+It is possible to restore a blob from it's `secretKey` alone, this
+may require you to pass-in a codec.
+
+```js
+const { encryptBlob, toEncryptedBlob } = require('@consento/crypto')
 
 const { blob } = encryptBlob('Hello Secret!')
-const sameBlob = toEncryptedBlob(blob.secretKey)
+const sameBlob = toEncryptedBlob(blob.secretKey, blob.codec.name)
 ```
 
 ## License
