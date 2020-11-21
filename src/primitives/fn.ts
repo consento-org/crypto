@@ -4,6 +4,8 @@ import { Channel } from './Channel'
 import { Buffer } from 'buffer'
 import { SignVector } from './SignVector'
 import { CodecOption } from '@consento/codecs'
+import { exists } from '../util'
+import { signedBodyCodec } from '../util/signedBodyCodec'
 
 const {
   crypto_box_PUBLICKEYBYTES: CRYPTO_BOX_PUBLICKEYBYTES,
@@ -53,14 +55,22 @@ export function verifyMessage (verifyKey: Uint8Array, message: IEncryptedMessage
   return _verify(message.signature, message.body, verifyKey)
 }
 
-export function verifyBody (verifyKey: Uint8Array, message: IEncryptedMessage | Uint8Array): Uint8Array {
+export function verifyBody (verifyKey: Uint8Array, message: IEncryptedMessage | Uint8Array, signVector?: ISignVector): Uint8Array {
+  let encrypted: Uint8Array
   if (message instanceof Uint8Array) {
-    return message
+    encrypted = message
+  } else {
+    if (!verify(verifyKey, message.signature, message.body)) {
+      throw Object.assign(new Error('Invalid signature'), { code: EDecryptionError.invalidSignature })
+    }
+    encrypted = message.body
   }
-  if (!verify(verifyKey, message.signature, message.body)) {
-    throw Object.assign(new Error('Invalid signature'), { code: EDecryptionError.invalidSignature })
+  if (!exists(signVector)) {
+    return encrypted
   }
-  return message.body
+  const { body, signature } = signedBodyCodec.decode(encrypted)
+  signVector.verify(body, signature)
+  return body
 }
 
 export function decryptBody (writeKey: Uint8Array, readKey: Uint8Array, body: Uint8Array): Uint8Array {

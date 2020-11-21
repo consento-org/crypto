@@ -89,21 +89,22 @@ export class Reader <TCodec extends CodecOption = undefined> extends Inspectable
     return `Reader(${stylize(this.codec.name, 'special')}|${stylize(prettyHash(this.verifyKeyHex), 'string')})`
   }
 
-  encryptOnly (message: InType<TCodec, 'msgpack'>): Uint8Array {
-    return encryptMessage(this.encryptKey, this.codec.encode(message))
+  encryptOnly (message: InType<TCodec, 'msgpack'>, signVector?: ISignVector): Uint8Array {
+    const body = encryptMessage(this.encryptKey, this.codec.encode(message))
+    if (!exists(signVector)) {
+      return body
+    }
+    return signedBodyCodec.encode({
+      body,
+      signature: signVector.sign(body)
+    })
   }
 
   decrypt (encrypted: IEncryptedMessage | Uint8Array, signVector?: ISignVector): OutType<TCodec, 'msgpack'> {
-    let encryptedBody = verifyBody(this.verifyKey, encrypted)
-    if (exists(signVector)) {
-      const { body, signature } = signedBodyCodec.decode(encryptedBody)
-      signVector.verify(body, signature)
-      encryptedBody = body
-    }
     return this.codec.decode(decryptBody(
       this.encryptKey,
       this.decryptKey,
-      encryptedBody
+      verifyBody(this.verifyKey, encrypted, signVector)
     ))
   }
 }

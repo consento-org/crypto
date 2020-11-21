@@ -81,8 +81,8 @@ describe('Permission and encryption for channels', () => {
     expect(bufferCompare(recoveredId, original.verifyKey)).toBe(0)
     const message = Buffer.from('Hello World')
     const recoveredAnnonymous = new Verifier(recovered.verifier.toJSON())
-    expect(recoveredAnnonymous.verify(sender.sign(message), message)).toBe(true)
-    expect(recovered.verifier.verify(sender.sign(message), message)).toBe(true)
+    recoveredAnnonymous.verify(sender.sign(message), message)
+    recovered.verifier.verify(sender.sign(message), message)
     expect(recovered.decrypt(sender.encrypt('hi!'))).toEqual('hi!')
     expect(original.decrypt(sender.encrypt('hi!'))).toEqual('hi!')
   })
@@ -110,8 +110,8 @@ describe('Permission and encryption for channels', () => {
     const { writer: sender, verifier: annonymous } = createChannel()
     const body = Buffer.from('abcd')
     const signature = sender.sign(body)
-    expect(annonymous.verify(signature, body)).toBe(true)
-    expect(annonymous.verifyMessage({ signature, body })).toBe(true)
+    annonymous.verify(signature, body)
+    annonymous.verifyMessage({ signature, body })
   })
 
   it('signing and verifying a wrong message', () => {
@@ -119,15 +119,15 @@ describe('Permission and encryption for channels', () => {
     const { verifier: annonymous } = createChannel()
     const body = Buffer.from('abcd')
     const signature = sender.sign(body)
-    expect(annonymous.verify(signature, body)).toBe(false)
-    expect(annonymous.verifyMessage({ signature, body })).toBe(false)
+    expect(() => annonymous.verify(signature, body)).toThrowError('Invalid signature')
+    expect(() => annonymous.verifyMessage({ signature, body })).toThrowError('Invalid signature')
   })
 
   it('signing and verifying with a partial channel', () => {
     const { writer: sender, verifier: annonymous } = createChannel()
     const body = Buffer.from('abcd')
     const signature = sender.sign(body)
-    expect(annonymous.verify(signature, body)).toBe(true)
+    annonymous.verify(signature, body)
   })
 
   it('receiver can decrypt data from sender', () => {

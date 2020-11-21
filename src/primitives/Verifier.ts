@@ -1,6 +1,6 @@
 import { bufferToString, Inspectable, toBuffer } from '../util'
-import { IVerifier, IVerifierJSON, IVerifierOptions, IEncryptedMessage } from '../types'
-import { verify, verifyMessage } from './fn'
+import { IVerifier, IVerifierJSON, IVerifierOptions, IEncryptedMessage, ISignVector } from '../types'
+import { verifyBody } from './fn'
 import { InspectOptions } from 'inspect-custom-symbol'
 import prettyHash from 'pretty-hash'
 
@@ -50,11 +50,11 @@ export class Verifier extends Inspectable implements IVerifier {
     return `Verifier(${stylize(prettyHash(this.verifyKey), 'string')})`
   }
 
-  verify (signature: Uint8Array, body: Uint8Array): boolean {
-    return verify(this.verifyKey, signature, body)
+  verify (signature: Uint8Array, body: Uint8Array, signVector?: ISignVector): void {
+    verifyBody(this.verifyKey, { body, signature }, signVector)
   }
 
-  verifyMessage (message: IEncryptedMessage): boolean {
-    return verifyMessage(this.verifyKey, message)
+  verifyMessage (message: IEncryptedMessage | Uint8Array, signVector?: ISignVector): void {
+    verifyBody(this.verifyKey, message, signVector)
   }
 }

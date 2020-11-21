@@ -46,8 +46,9 @@ export interface IChannelActor {
 
 export interface IVerifier extends IChannelActor {
   toJSON(): IVerifierJSON
-  verify(signature: Uint8Array, body: Uint8Array): boolean
-  verifyMessage(message: IEncryptedMessage): boolean
+  verify(signature: Uint8Array, body: Uint8Array, signVector?: ISignVector): void
+  verifyMessage(message: IEncryptedMessage): void
+  verifyMessage(message: IEncryptedMessage | Uint8Array, signVector: ISignVector): void
 }
 
 export interface IWriterJSON <TCodec extends CodecOption> {
