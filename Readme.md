@@ -10,8 +10,11 @@ of this library and to namings.
 
 ## Goal
 
-[`libsodium`](https://doc.libsodium.org/) is a good crypto foundation to build on but
-using it as-is presents various issues:
+We are determined to use the [`sodium-universal`](https://github.com/sodium-friends/sodium-universal)
+implementation of [`libsodium`](https://doc.libsodium.org/) for the javascript implementation of consento.
+It is a good crypto foundation, that is used in the [`Dat](https://datproject.org) community.
+
+`@consento/crypto` adds constructs on top of `sodium-universal` that aim to resolve following issues:
 
 > `keys` are all of the same type (`Uint8Array`) and its easy to mistake one key for another one.
 
