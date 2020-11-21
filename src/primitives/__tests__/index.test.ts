@@ -170,6 +170,20 @@ describe('Permission and encryption for channels', () => {
     const { writer: sender, reader: receiver } = createChannel()
     expect(receiver.decrypt(sender.encryptOnly('hello world'))).toEqual('hello world')
   })
+
+  it('non-default codec support', () => {
+    const channel = createChannel({ codec: 'binary' })
+    const encrypted = channel.writer.encrypt(Buffer.from('hello', 'utf8'))
+    const decrypted = channel.reader.decrypt(encrypted)
+    expect(channel.writer.codec.name).toBe(channel.reader.codec.name)
+    expect(decrypted.toString('utf8')).toBe('hello')
+  })
+
+  it('custom codec support', () => {
+    const channel = createChannel({ codec: { name: 'test', encode: (_: number): Buffer => Buffer.from('abcd'), decode: (input: Uint8Array) => input[0] } })
+    expect(channel.writer.codec.name).toBe('test')
+    expect(channel.writer.codec).toBe(channel.reader.codec)
+  })
 })
 
 describe('Signing vectors', () => {
@@ -182,6 +196,7 @@ describe('Signing vectors', () => {
     inVector.verify(message, sigB)
     expect(sigA).not.toEqual(sigB)
   })
+
   it('sign and verify in the wrong order', () => {
     const { inVector, outVector } = createSignVectors()
     const message = encode('hello world ')
@@ -191,6 +206,7 @@ describe('Signing vectors', () => {
       inVector.verify(message, sigB)
     }).toThrowError(new Error('Unexpected next index (expected=0, found=1)'))
   })
+
   it('sign and verify trying to trick the order', () => {
     const { inVector, outVector } = createSignVectors()
     const message = encode('hello world ')
@@ -206,6 +222,7 @@ describe('Signing vectors', () => {
     inVector.verify(message, sigA)
     inVector.verify(message, sigB)
   })
+
   it('de-/serialization of sign vectors', () => {
     const { inVector, outVector } = createSignVectors()
     const message = encode('hello world ')
@@ -220,6 +237,7 @@ describe('Signing vectors', () => {
     expect(sigB).not.toEqual(resSigB)
     expect(resInVector.next).not.toEqual(inVector.next)
   })
+
   it('use with writer/reader', () => {
     const { inVector, outVector } = createSignVectors()
     const { writer, reader } = createChannel()
@@ -228,6 +246,7 @@ describe('Signing vectors', () => {
     expect(reader.decrypt(encryptedA, inVector)).toBe('hello')
     expect(reader.decrypt(encryptedB, inVector)).toBe('world')
   })
+
   it('wrong order with writer/reader', () => {
     const { inVector, outVector } = createSignVectors()
     const { writer, reader } = createChannel()
@@ -236,24 +255,5 @@ describe('Signing vectors', () => {
     expect(() => {
       reader.decrypt(encryptedB, inVector)
     }).toThrow(new Error('Unexpected next index (expected=0, found=1)'))
-  })
-  it('use with writer/reader serialization', () => {
-    const { inVector, outVector } = createSignVectors()
-    const resInVector = new SignVector(inVector.toJSON())
-    const resOutVector = new SignVector(outVector.toJSON())
-    expect(resOutVector.toJSON()).toEqual(outVector.toJSON())
-    expect(resInVector.toJSON()).toEqual(inVector.toJSON())
-  })
-  it('non-default codec support', () => {
-    const channel = createChannel({ codec: 'binary' })
-    const encrypted = channel.writer.encrypt(Buffer.from('hello', 'utf8'))
-    const decrypted = channel.reader.decrypt(encrypted)
-    expect(channel.writer.codec.name).toBe(channel.reader.codec.name)
-    expect(decrypted.toString('utf8')).toBe('hello')
-  })
-  it('custom codec support', () => {
-    const channel = createChannel({ codec: { name: 'test', encode: (_: number): Buffer => Buffer.from('abcd'), decode: (input: Uint8Array) => input[0] } })
-    expect(channel.writer.codec.name).toBe('test')
-    expect(channel.writer.codec).toBe(channel.reader.codec)
   })
 })
