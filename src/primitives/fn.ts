@@ -1,11 +1,11 @@
-import { EDecryptionError, IChannelOptions, IEncryptedMessage, IEncryptionKeys, ISignKeys, ISignVector } from '../types'
+import { EDecryptionError, IChannelOptions, IEncryptedMessage, IEncryptionKeys, ISignKeys, IVectors, IVerifyVector } from '../types'
 import * as sodium from 'sodium-universal'
 import { Channel } from './Channel'
 import { Buffer } from 'buffer'
-import { SignVector } from './SignVector'
 import { CodecOption } from '@consento/codecs'
 import { exists } from '../util'
 import { signedBodyCodec } from '../util/signedBodyCodec'
+import { Vectors } from './Vectors'
 
 const {
   crypto_box_PUBLICKEYBYTES: CRYPTO_BOX_PUBLICKEYBYTES,
@@ -55,7 +55,7 @@ export function verifyMessage (verifyKey: Uint8Array, message: IEncryptedMessage
   return _verify(message.signature, message.body, verifyKey)
 }
 
-export function verifyBody (verifyKey: Uint8Array, message: IEncryptedMessage | Uint8Array, signVector?: ISignVector): Uint8Array {
+export function verifyBody (verifyKey: Uint8Array, message: IEncryptedMessage | Uint8Array, signVector?: IVerifyVector): Uint8Array {
   let encrypted: Uint8Array
   if (message instanceof Uint8Array) {
     encrypted = message
@@ -88,12 +88,8 @@ export function sign (signKey: Uint8Array, body: Uint8Array): Uint8Array {
   return signature
 }
 
-export function createSignVectors (): { inVector: ISignVector, outVector: ISignVector } {
-  const keys = createSignKeys()
-  return {
-    inVector: new SignVector({ next: keys.verifyKey }),
-    outVector: new SignVector({ next: keys.signKey })
-  }
+export function createSignVectors (): IVectors {
+  return new Vectors(createSignKeys())
 }
 
 export function createChannel <TCodec extends CodecOption = undefined> (opts?: Omit<IChannelOptions<TCodec>, 'channelKey'>): Channel<TCodec> {

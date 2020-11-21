@@ -46,9 +46,9 @@ export interface IChannelActor {
 
 export interface IVerifier extends IChannelActor {
   toJSON(): IVerifierJSON
-  verify(signature: Uint8Array, body: Uint8Array, signVector?: ISignVector): void
+  verify(signature: Uint8Array, body: Uint8Array, signVector?: IVerifyVector): void
   verifyMessage(message: IEncryptedMessage): void
-  verifyMessage(message: IEncryptedMessage | Uint8Array, signVector: ISignVector): void
+  verifyMessage(message: IEncryptedMessage | Uint8Array, signVector: IVerifyVector): void
 }
 
 export interface IWriterJSON <TCodec extends CodecOption> {
@@ -95,28 +95,50 @@ export interface IReader <TCodec extends INamedCodec> extends IChannelActor {
    *
    * @param encrypted signed or unsigned message
    */
-  decrypt(encrypted: IEncryptedMessage | Uint8Array, signVector?: ISignVector): OutType<TCodec>
+  decrypt(encrypted: IEncryptedMessage | Uint8Array, signVector?: IVerifyVector): OutType<TCodec>
   encryptOnly(message: InType<TCodec>, signVector?: ISignVector): Uint8Array
 }
 
+export interface IVectors {
+  inVector: IVerifyVector
+  outVector: ISignVector
+  toJSON (): ISignVectorJSON & IVerifyVectorJSON
+}
+
 export interface ISignVector {
-  next: Uint8Array
-  nextBase64: string
-  index: number
-  increment (next: Uint8Array): Uint8Array
+  signKey: Uint8Array
+  signKeyBase64: string
+  signIndex: number
   sign (message: Uint8Array): Uint8Array
-  verify (message: Uint8Array, signature: Uint8Array): void
   toJSON (): ISignVectorJSON
 }
 
+export interface IVerifyVector {
+  verifyKey: Uint8Array
+  verifyKeyBase64: string
+  verifyIndex: number
+  verify (message: Uint8Array, signature: Uint8Array): void
+  toJSON (): IVerifyVectorJSON
+}
+
 export interface ISignVectorOptions {
-  next: IStringOrBuffer
-  index?: number
+  signKey: IStringOrBuffer
+  signIndex?: number
 }
 
 export interface ISignVectorJSON {
-  next: string
-  index: number
+  signKey: string
+  signIndex: number
+}
+
+export interface IVerifyVectorOptions {
+  verifyKey: IStringOrBuffer
+  verifyIndex?: number
+}
+
+export interface IVerifyVectorJSON {
+  verifyKey: string
+  verifyIndex: number
 }
 
 export interface IConnectionJSON <TInputCodec extends INamedCodec, TOutputCodec extends INamedCodec> {

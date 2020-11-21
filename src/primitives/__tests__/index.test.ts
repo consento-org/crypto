@@ -4,6 +4,7 @@ import { createChannel, Verifier, Reader, Writer, Channel, createSignVectors } f
 import prettyHash from 'pretty-hash'
 import { decode, encode } from '@msgpack/msgpack'
 import { SignVector } from '../SignVector'
+import { VerifyVector } from '../VerifyVector'
 
 describe('Permission and encryption for channels', () => {
   it('a channel is serializable', () => {
@@ -228,14 +229,14 @@ describe('Signing vectors', () => {
     const message = encode('hello world ')
     const sigA = outVector.sign(message)
     inVector.verify(message, sigA)
-    const resInVector = new SignVector(inVector.toJSON())
+    const resInVector = new VerifyVector(inVector.toJSON())
     const resOutVector = new SignVector(outVector.toJSON())
     const sigB = outVector.sign(message)
     const resSigB = resOutVector.sign(message)
     resInVector.verify(message, sigB)
     inVector.verify(message, resSigB)
     expect(sigB).not.toEqual(resSigB)
-    expect(resInVector.next).not.toEqual(inVector.next)
+    expect(resInVector.verifyKey).not.toEqual(inVector.verifyKey)
   })
 
   it('use with writer/reader/verifier', () => {
@@ -243,7 +244,7 @@ describe('Signing vectors', () => {
     const { writer, reader } = createChannel()
     const encryptedA = writer.encrypt('hello', outVector)
     const encryptedB = writer.encrypt('world', outVector)
-    const inVectorCopy = new SignVector(inVector)
+    const inVectorCopy = new VerifyVector(inVector)
     expect(reader.decrypt(encryptedA, inVector)).toBe('hello')
     expect(reader.decrypt(encryptedB, inVector)).toBe('world')
     reader.verifier.verifyMessage(encryptedA, inVectorCopy)

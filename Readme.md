@@ -24,6 +24,7 @@ for all data types.
 - `Handshake` - the process to connect two separate processes/devices resulting in a `Connection` for each process.
 - `SignVector` - operations on a `Channel` **may** be `vectored` with means that there is a new sign/verify keypair for every new message.
     The `SignVector` holds the `index` and current `sign` or `verify` key.
+- `VerifyVector` - sibling to `SignVector` the `VerifyVector` allows to verify things in the order that the `SignVector` created it.
 - `Codec` - Data written by a reader or read by a writer will be transported binary (`Uint8Array`), a `Codec` specifies how an object read
     or written will be translated from/to binary data.
 
@@ -155,14 +156,19 @@ encrypted // Uint8Array with an encrypted message
 
 #### signVector.sign(message)
 
+Signs a message in the order received.
+
 - `message` - an `Uint8Array` that should be signed.
 
 ```javascript
 const { outVector } = createSignVectors()
 outVector.sign('hello world')
+outVector.sign('hello world') // Different signature!
 ```
 
-#### signVector.verify(message, signature)
+#### verifyVector.verify(message, signature)
+
+Verifies that a message is encrypted with the corresponding `signVector` created using `createSignVectors`
 
 - `message` - an `Uint8Array` with the message for the signature 
 - `signature` - an `Uint8Array` that contains the signature

@@ -1,4 +1,4 @@
-import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions, ISignVector } from '../types'
+import { IVerifier, IReader, IReaderJSON, IEncryptedMessage, IReaderOptions, ISignVector, IVerifyVector } from '../types'
 import { Verifier } from './Verifier'
 import { encryptKeyFromSendOrReceiveKey, decryptKeyFromReceiveKey, verifyKeyFromSendOrReceiveKey } from './key'
 import { bufferToString, exists, Inspectable, toBuffer } from '../util'
@@ -100,11 +100,11 @@ export class Reader <TCodec extends CodecOption = undefined> extends Inspectable
     })
   }
 
-  decrypt (encrypted: IEncryptedMessage | Uint8Array, signVector?: ISignVector): OutType<TCodec, 'msgpack'> {
+  decrypt (encrypted: IEncryptedMessage | Uint8Array, verifyVector?: IVerifyVector): OutType<TCodec, 'msgpack'> {
     return this.codec.decode(decryptBody(
       this.encryptKey,
       this.decryptKey,
-      verifyBody(this.verifyKey, encrypted, signVector)
+      verifyBody(this.verifyKey, encrypted, verifyVector)
     ))
   }
 }
