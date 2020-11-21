@@ -238,13 +238,16 @@ describe('Signing vectors', () => {
     expect(resInVector.next).not.toEqual(inVector.next)
   })
 
-  it('use with writer/reader', () => {
+  it('use with writer/reader/verifier', () => {
     const { inVector, outVector } = createSignVectors()
     const { writer, reader } = createChannel()
     const encryptedA = writer.encrypt('hello', outVector)
     const encryptedB = writer.encrypt('world', outVector)
+    const inVectorCopy = new SignVector(inVector)
     expect(reader.decrypt(encryptedA, inVector)).toBe('hello')
     expect(reader.decrypt(encryptedB, inVector)).toBe('world')
+    reader.verifier.verifyMessage(encryptedA, inVectorCopy)
+    reader.verifier.verifyMessage(encryptedB, inVectorCopy)
   })
 
   it('wrong order with writer/reader', () => {
