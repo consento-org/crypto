@@ -1,16 +1,9 @@
 import { EDecryptionError, ISignVector, ISignVectorJSON, ISignVectorOptions } from '../types'
-import inspect, { InspectOptions } from 'inspect-custom-symbol'
-import { Buffer, bufferToString, Inspectable, toBuffer } from '../util'
+import { InspectOptions } from 'inspect-custom-symbol'
+import { bufferToString, Inspectable, toBuffer } from '../util'
 import prettyHash from 'pretty-hash'
 import { decode, encode } from '@msgpack/msgpack'
 import { createSignKeys, sign, verify } from './fn'
-
-// @ts-expect-error
-// eslint-disable-next-line no-extend-native
-Uint8Array.prototype[inspect as unknown as any] = function () { return '#' + bufferToString(this, 'base64') }
-// @ts-expect-error
-// eslint-disable-next-line no-extend-native
-Buffer.prototype[inspect as unknown as any] = function () { return '#' + bufferToString(this, 'base64') }
 
 function assertSignatureParts (input: any): asserts input is { payload: Uint8Array, index: number, next: Uint8Array } {
   if (typeof input !== 'object' || input === null) {
