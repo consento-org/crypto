@@ -58,30 +58,6 @@ reader.decryptKey // Allows the reader to decrypt messages, only privy to the re
 writer.encryptKey.equals(receiver.encryptKey) // Key to encrypt messages, receiver _can_ write but not sign the message, thus it exists pro-forma
 ```
 
-To make sure that the order of the encrypted messages is maintained you can use `SignVector`s that will rotate the signing
-key for each message.
-
-
-```javascript
-const { createSignVectors } = require('@consento/crypto')
-const { inVector, outVector } = createSignVectors()
-
-const message = Buffer.from('hello world')
-const sigA = outVector.sign(message)
-const sigB = outVector.sign(message) // Both signatures are different!j
-
-inVector.verify(message, sigA)
-inVector.verify(message, sigB) // The signatures need to be verified in order, else an exception will be thrown
-
-// Using the in-/outVector in combination with readers and writers will affect the `encryptNext`, `decryptNext` operation
-const { reader, writer } = createChannel()
-reader.inVector = inVector
-writer.outVector = outVector
-
-const encrypted = writer.encryptNext('hello world') // With the inVector and outVector set, the order is maintained
-const message = reader.decryptNext(encrypted) // This would thrown an error if the signature can't be verified
-```
-
 All objects created using `createChannel` are well de-/serializable:
 
 ```javascript
