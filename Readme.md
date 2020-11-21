@@ -110,22 +110,52 @@ const differentCodec = new Writer({ ...writer.toJSON(), codec: 'msgpack' })
 differentCodec.encrypt({ foo: 'hello' }) // Looks same but the binary data is now encoded using msgpack
 ```
 
-### .verifier
+## Sign-Vectors
 
-Both the `.sender` and the `.receiver` object have a `.annoymous` field
-to retreive an annonymous instance for the sender/receiver.
+The `encrypt`, `decrypt` and `verify` operations can be extended using a `SignVector`. The `SignVector`
+allows for all operations to be in sequential order. In other words: the chunks need to be decrypted/verified
+in the same order as they were encrypted.
 
-```javascript
-const { writer, reader } = createChannel()
-writer.verifier.verify(...)
-reader.verifier.verify(...)
+```js
+const { createChannel, createSignVectors, SignVector } = require('@consento/crypto')
+const { inVector, outVector } = createSignVectors()
+const { writer, reader, verifier } = createChannel()
+
+const list = []
+
+list.push(writer.encrypt('foo', outVector))
+console.log(outVector)
+
+list.push(writer.encrypt('bar', outVector))
+console.log(outVector)
+
+list.push(writer.encrypt('baz', outVector))
+console.log(outVector)
+
+const decryptVector = new SignVector(inVector)
+for (const entry of list) {
+  console.log(reader.decrypt(entry, decryptVector))
+  console.log(decryptVector)
+}
+
+const verifyVector = new SignVector(inVector)
+for (const entry of list) {
+  try {
+    verifier.verify(entry, verifyVector)
+  } catch (err) {
+    // not verified
+  }
+  console.log(verifyVector)
+}
 ```
 
-#### writer.encrypt(body)
+#### writer.encrypt(body, [signVector])
 
 Encrypt and sign a given input with the `encryptKey` and `signKey`.
 
 - `body` - what you like to encrypt, any serializable object is possible
+- `signVector` - optional `SignVector` instance to assure order of statements.
+    See [Sign Vectors](#sign-vectors).
 
 ```javascript
 const encrypted = writer.encrypt('secret message')
@@ -133,12 +163,14 @@ encrypted.signature // Uint8Array
 encrypted.body // Uint8Array
 ```
 
-#### writer.encryptOnly(body), reader.encryptOnly(body)
+#### writer.encryptOnly(body, [signVector]), reader.encryptOnly(body, [signVector])
 
 Only encrypt the body. This is only recommended in an environment where the
 signature needs to be created at a different time!
 
 - `body` - what you like to encrypt, any serializable object is possible
+- `signVector` - optional `SignVector` instance to assure order of statements.
+    See [Sign Vectors](#sign-vectors).
 
 ```javascript
 const encrypted = writer.encrypt('secret message')
@@ -151,7 +183,7 @@ encrypted // Uint8Array with an encrypted message
 
 ```javascript
 const { outVector } = createSignVectors()
-inVector.verify('hello world')
+outVector.sign('hello world')
 ```
 
 #### signVector.verify(message, signature)
@@ -160,38 +192,16 @@ inVector.verify('hello world')
 - `signature` - an `Uint8Array` that contains the signature
 
 ```javascript
+const { EDecryptionError } = require('@consento/crypto')
 const { inVector } = createSignVectors()
-inVector.verify(message, signature)
-```
-
-#### writer.outVector, reader.inVector
-
-An optional property which enables vectored encryption in `writer.encryptNext` and
-`writer.encryptNextOnly` and `reader.decryptNext` respectively.
-
-#### writer.encryptNext(body)
-
-If an `.outVector` is present, this method will add a signature from the `outVector` to
-the data before encrypting and signing the data, else behaves same as `writer.encrypt`.
-
-- `body` - what you like to encrypt, any serializable object is possible
-
-```javascript
-const encrypted = writer.encryptNext('secret message')
-encrypted.signature // Uint8Array
-encrypted.body // Uint8Array
-```
-
-#### writer.encryptNextOnly(body)
-
-If an `.outVector` is present, this method will add a signature from the `outVector` to
-the data before encrypting the data, else it behaves same as `writer.encryptOnly`.
-
-- `body` - what you like to encrypt, any serializable object is possible
-
-```javascript
-const encrypted = writer.encryptNextOnly('secret message')
-encrypted // Uint8Array with an encrypted message
+try {
+  inVector.verify(message, signature)
+} catch (error) {
+  switch (error.code) {
+    case EDecryptionError.unexpectedIndex: // Order of messages may be wrong
+    case EDecryptionError.vectorIntegrity: // General vector verificaton failed
+  }
+}
 ```
 
 #### writer.sign(data)
@@ -206,44 +216,61 @@ const signature = sender.sign(sender.encryptOnly('secret message'))
 signature // Uint8Array with the signature of the encrypted message
 ```
 
-#### verifier.verify(signature, body)
+#### verifier.verify(signature, body, [signVector])
 
 Using the annonymous object we can verify a given data.
 
 - `signature` - `Uint8Array` with the signature for the `body`
 - `body` - `Uint8Array` with of the encrypted data.
+- `signVector` - optional `SignVector` instance to assure order of statements.
+    See [Sign Vectors](#sign-vectors).
 
 ```javascript
 const encrypted = writer.encrypt('hello world')
-const bool = verifier.verify(encrypted.signature, encrypted.body)
+try {
+  verifier.verify(encrypted.signature, encrypted.body)
+} catch (err) {
+  switch (err.code) {
+    case EDecryptionError.invalidSignature: // Signature doesn't match
+    case EDecryptionError.unexpectedIndex: // Order of messages may be wrong, only with SignVector
+    case EDecryptionError.vectorIntegrity: // General vector verificaton failed, only with SignVector
+  }
+}
 ```
 
-#### verifier.verifyMessage(message)
+#### verifier.verifyMessage(message, [signVector])
 
 As a short-cut its also possible to just verify a message
 
-- `message` - `{ signature: Uint8Array, body: Uint8Array }`
+- `message` - `{ signature: Uint8Array, body: Uint8Array }` can also be `Uint8Array` in combination with a
+    `signVector`
+- `signVector` - optional `SignVector` instance to assure order of statements.
+    See [Sign Vectors](#sign-vectors).
 
 ```javascript
-const bool = verifier.verifyMessage(message)
+try {
+  verifier.verifyMessage(message)
+} catch (err) {
+  switch (err.code) {
+    case EDecryptionError.invalidSignature: // Signature doesn't match
+    case EDecryptionError.unexpectedIndex: // Order of messages may be wrong, only with SignVector
+    case EDecryptionError.vectorIntegrity: // General vector verificaton failed, only with SignVector
+  }
+}
 ```
 
-#### reader.decrypt(encrypted)
+#### reader.decrypt(encrypted, [signVector])
 
 Get the content of a once encrypted message.
 
-- `encrypted` - `{ signature: Uint8Array, body: Uint8Array }` as created by `writer.encrypt` or `Uint8Array` created with `writer.encryptOnly`
+- `encrypted` - `{ signature: Uint8Array, body: Uint8Array }` as created by `writer.encrypt` or
+    `Uint8Array` created with `writer.encryptOnly`
+- `signVector` - optional `SignVector` instance to assure order of statements.
+    See [Sign Vectors](#sign-vectors).
 
 ```javascript
 const message = reader.decrypt(message:)
 ```
-
-#### reader.decryptNext(encrypted)
-
-If an `.inVector` is present, this method will verify the signature using the `inVector` to
-the data after decrypting the data, else it behaves same as `writer.decrypt`.
-
-- `encrypted` - `{ signature: Uint8Array, body: Uint8Array }` as created by `writer.encryptNext` or `Uint8Array` created with `writer.encryptNextOnly`
 
 ## Creating a handshake
 
