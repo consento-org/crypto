@@ -12,7 +12,7 @@ of this library and to namings.
 
 We are determined to use the [`sodium-universal`](https://github.com/sodium-friends/sodium-universal)
 implementation of [`libsodium`](https://doc.libsodium.org/) for the javascript implementation of consento.
-It is a good crypto foundation, that is used in the [`Dat](https://datproject.org) community.
+It is a good crypto foundation, that is used in the [`Dat`](https://datproject.org) community.
 
 `@consento/crypto` adds constructs on top of `sodium-universal` that aim to resolve following issues:
 
@@ -136,7 +136,7 @@ allows for all operations to be in sequential order. In other words: the chunks 
 in the same order as they were encrypted.
 
 ```js
-const { createChannel, createSignVectors, SignVector } = require('@consento/crypto')
+const { createChannel, createSignVectors, SignVector, VerifyVector } = require('@consento/crypto')
 const { inVector, outVector } = createSignVectors()
 const { writer, reader, verifier } = createChannel()
 
@@ -151,13 +151,13 @@ console.log(outVector)
 list.push(writer.encrypt('baz', outVector))
 console.log(outVector)
 
-const decryptVector = new SignVector(inVector)
+const decryptVector = new VerifyVector(inVector)
 for (const entry of list) {
   console.log(reader.decrypt(entry, decryptVector))
   console.log(decryptVector)
 }
 
-const verifyVector = new SignVector(inVector)
+const verifyVector = new VerifyVector(inVector)
 for (const entry of list) {
   try {
     verifier.verify(entry, verifyVector)
